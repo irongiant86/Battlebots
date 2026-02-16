@@ -1,0 +1,94 @@
+// GET /api/battles/[id]/stream — SSE stream voor live battle updates
+import { NextRequest } from 'next/server';
+import { store } from '@/lib/store';
+import { battleEngine } from '@/lib/battle-engine';
+import { BattleEvent } from '@/lib/types';
+
+export const dynamic = 'force-dynamic';
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const battle = store.getBattle(id);
+
+  if (!battle) {
+    return new Response('Battle niet gevonden', { status: 404 });
+  }
+
+  const stream = new ReadableStream({
+    start(controller) {
+      const encoder = new TextEncoder();
+
+      const send = (event: BattleEvent) => {
+        try {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify(event)}\n\n`)
+          );
+        } catch {
+          // Stream gesloten
+        }
+      };
+
+      // Stuur huidige state als eerste event
+      send({
+        type: 'spectator_count',
+        count: (battle.spectatorCount || 0) + 1,
+      });
+
+      // Update spectator count
+      store.updateBattle(id, {
+        spectatorCount: (battle.spectatorCount || 0) + 1,
+      });
+
+      // Stuur bestaande rondes als de battle al bezig is
+      if (battle.rounds.length > 0) {
+        for (const round of battle.rounds) {
+          if (round.bot1Response && round.bot2Response) {
+            send({
+              type: 'round_complete',
+              round: round.roundNumber,
+              bot1Response: round.bot1Response,
+              bot2Response: round.bot2Response,
+            });
+          }
+        }
+      }
+
+      // Als battle al klaar is
+      if (battle.status === 'voting') {
+        send({ type: 'voting_start' });
+      } else if (battle.status === 'completed') {
+        send({ type: 'battle_complete', winnerId: battle.winnerId });
+      }
+
+      // Registreer als listener
+      const unsubscribe = battleEngine.subscribe(id, send);
+
+      // Cleanup bij disconnect
+      req.signal.addEventListener('abort', () => {
+        unsubscribe();
+        const currentBattle = store.getBattle(id);
+        if (currentBattle) {
+          store.updateBattle(id, {
+            spectatorCount: Math.max(0, (currentBattle.spectatorCount || 1) - 1),
+          });
+        }
+        try {
+          controller.close();
+        } catch {
+          // Al gesloten
+        }
+      });
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      Connection: 'keep-alive',
+    },
+  });
+}

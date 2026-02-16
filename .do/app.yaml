@@ -1,0 +1,37 @@
+name: botroyale
+region: ams
+
+alerts:
+  - rule: DEPLOYMENT_FAILED
+
+services:
+  - name: botroyale-web
+    github:
+      repo: irongiant86/Battlebots
+      branch: main
+      deploy_on_push: true
+    environment_slug: node-js
+    build_command: npm run build
+    run_command: npm start
+    http_port: 3000
+    instance_size_slug: apps-s-1vcpu-1gb
+    instance_count: 1
+    health_check:
+      http_path: /api/auth/me
+      period_seconds: 30
+    envs:
+      - key: ANTHROPIC_API_KEY
+        type: SECRET
+        scope: RUN_TIME
+      - key: OPENAI_API_KEY
+        type: SECRET
+        scope: RUN_TIME
+      - key: SESSION_SECRET
+        type: SECRET
+        scope: RUN_TIME
+      - key: NEXT_PUBLIC_APP_URL
+        value: "${APP_URL}"
+        scope: RUN_AND_BUILD_TIME
+      - key: NODE_ENV
+        value: "production"
+        scope: RUN_AND_BUILD_TIME
