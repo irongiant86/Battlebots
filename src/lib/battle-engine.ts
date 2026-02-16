@@ -217,14 +217,35 @@ class BattleEngine {
     let fullResponse = '';
 
     try {
-      // Stream tokens live naar clients — elk model streamt via dezelfde interface
+      // Stream tokens live naar clients met pacing voor natuurlijk lees-tempo
+      // Tokens worden gebufferd tot een woord compleet is, dan geëmit met delay
+      let wordBuffer = '';
+      const PACE_DELAY_MS = 25; // ms tussen woorden — simuleert typen
+
       for await (const token of streamBotResponse(bot.model, system, user)) {
         fullResponse += token;
+        wordBuffer += token;
+
+        // Emit bij whitespace/newline (woord compleet) of bij lang token
+        if (/\s/.test(token) || wordBuffer.length > 20) {
+          this.emit(battle.id, {
+            type: 'token',
+            round,
+            bot: botSide,
+            token: wordBuffer,
+          });
+          wordBuffer = '';
+          await this.sleep(PACE_DELAY_MS);
+        }
+      }
+
+      // Flush resterende buffer
+      if (wordBuffer) {
         this.emit(battle.id, {
           type: 'token',
           round,
           bot: botSide,
-          token,
+          token: wordBuffer,
         });
       }
     } catch (error) {

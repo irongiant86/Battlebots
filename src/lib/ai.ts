@@ -118,7 +118,7 @@ async function* streamAnthropic(
 }
 
 // ============================================================
-// OPENAI PROVIDER (GPT-4o & GPT-4o-mini)
+// OPENAI PROVIDER (GPT-5.2 & GPT-5 Mini)
 // ============================================================
 async function* streamOpenAI(
   model: AIModel,
@@ -132,8 +132,9 @@ async function* streamOpenAI(
   }
 
   const maxTokens = AI_MODELS[model].maxTokens;
-  console.log(`[AI/OpenAI] Request naar ${model}, max_tokens=${maxTokens}`);
+  console.log(`[AI/OpenAI] Request naar ${model}, max_completion_tokens=${maxTokens}`);
 
+  // GPT-5 modellen vereisen max_completion_tokens ipv max_tokens
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -142,7 +143,7 @@ async function* streamOpenAI(
     },
     body: JSON.stringify({
       model,
-      max_tokens: maxTokens,
+      max_completion_tokens: maxTokens,
       stream: true,
       messages: [
         { role: 'system', content: systemPrompt },
