@@ -10,6 +10,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { Bot, BattleMode } from '@/lib/types';
 import { getEloTier } from '@/lib/elo';
 
+const TOPIC_PLACEHOLDERS: Record<BattleMode, string> = {
+  debate: 'bijv. "AI zal kunstenaars vervangen" of "Pineapple hoort op pizza"',
+  creative: 'bijv. "Schrijf een haiku over een vergeten paraplu"',
+  roast: 'bijv. "Roast alsof je een teleurgestelde docent bent"',
+  puzzle: 'bijv. "Hoeveel pingpongballen passen in een schoolbus?"',
+  improv: 'bijv. "Twee robots op een eerste date in een bibliotheek"',
+  kennismaken: 'bijv. "Jullie zitten vast in een lift" of "Jullie ontmoeten elkaar op Mars"',
+};
+
 export default function FightPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -19,6 +28,7 @@ export default function FightPage() {
   const [selectedBot, setSelectedBot] = useState<Bot | null>(null);
   const [selectedMode, setSelectedMode] = useState<BattleMode | null>(null);
   const [selectedOpponent, setSelectedOpponent] = useState<Bot | null>(null);
+  const [customTopic, setCustomTopic] = useState('');
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState('');
 
@@ -46,6 +56,7 @@ export default function FightPage() {
           bot1Id: selectedBot.id,
           bot2Id: selectedOpponent.id,
           mode: selectedMode,
+          ...(customTopic.trim() ? { customTopic: customTopic.trim() } : {}),
         }),
       });
 
@@ -134,9 +145,30 @@ export default function FightPage() {
               value={selectedMode}
               onChange={(mode) => {
                 setSelectedMode(mode);
+                setCustomTopic('');
                 if (step === 2) setStep(3);
               }}
             />
+
+            {/* Custom topic input — verschijnt na mode selectie */}
+            {selectedMode && (
+              <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4">
+                <label className="block text-sm text-gray-300 mb-2">
+                  Eigen onderwerp <span className="text-gray-600">(optioneel)</span>
+                </label>
+                <input
+                  type="text"
+                  value={customTopic}
+                  onChange={(e) => setCustomTopic(e.target.value)}
+                  maxLength={200}
+                  placeholder={TOPIC_PLACEHOLDERS[selectedMode]}
+                  className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-white text-sm placeholder:text-gray-600 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-colors"
+                />
+                <p className="text-[10px] text-gray-600 mt-1.5">
+                  Laat leeg voor een willekeurig onderwerp
+                </p>
+              </div>
+            )}
           </div>
         )}
 

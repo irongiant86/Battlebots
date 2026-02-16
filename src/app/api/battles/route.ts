@@ -2,7 +2,7 @@
 // GET /api/battles — Lijst van battles
 import { NextRequest, NextResponse } from 'next/server';
 import { store } from '@/lib/store';
-import { Battle, StartBattleRequest, AI_MODELS } from '@/lib/types';
+import { Battle, BattleChallenge, BattleMode, StartBattleRequest, AI_MODELS } from '@/lib/types';
 import { generateId, ROUNDS_PER_MODE } from '@/lib/utils';
 import { getRandomChallenge, getChallenge } from '@/lib/challenges';
 import { battleEngine } from '@/lib/battle-engine';
@@ -42,11 +42,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Je kunt alleen met je eigen bot vechten' }, { status: 403 });
     }
 
-    // Challenge selecteren
-    const challenge =
-      body.challengeIndex !== undefined
-        ? getChallenge(body.mode, body.challengeIndex)
-        : getRandomChallenge(body.mode);
+    // Challenge selecteren — custom topic of random
+    let challenge;
+    const customTopic = body.customTopic?.trim();
+    if (customTopic && customTopic.length >= 3 && customTopic.length <= 200) {
+      challenge = buildCustomChallenge(body.mode, customTopic);
+    } else {
+      challenge =
+        body.challengeIndex !== undefined
+          ? getChallenge(body.mode, body.challengeIndex)
+          : getRandomChallenge(body.mode);
+    }
 
     const battle: Battle = {
       id: generateId(),
@@ -107,4 +113,59 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ battles: store.getAllBattles() });
+}
+
+// Bouw een custom challenge op basis van een door de gebruiker ingebracht onderwerp
+function buildCustomChallenge(mode: BattleMode, topic: string): BattleChallenge {
+  switch (mode) {
+    case 'debate':
+      return {
+        title: topic.length > 40 ? topic.slice(0, 40) + '...' : topic,
+        description: 'Door kijker ingebracht onderwerp',
+        mode,
+        topic,
+      };
+    case 'creative':
+      return {
+        title: topic.length > 40 ? topic.slice(0, 40) + '...' : topic,
+        description: 'Door kijker ingebrachte opdracht',
+        mode,
+        task: topic,
+      };
+    case 'roast':
+      return {
+        title: topic.length > 40 ? topic.slice(0, 40) + '...' : topic,
+        description: 'Door kijker ingebracht thema',
+        mode,
+        topic,
+      };
+    case 'puzzle':
+      return {
+        title: topic.length > 40 ? topic.slice(0, 40) + '...' : topic,
+        description: 'Door kijker ingebrachte puzzel',
+        mode,
+        task: topic,
+      };
+    case 'improv':
+      return {
+        title: topic.length > 40 ? topic.slice(0, 40) + '...' : topic,
+        description: 'Door kijker ingebracht scenario',
+        mode,
+        scenario: topic,
+      };
+    case 'kennismaken':
+      return {
+        title: topic.length > 40 ? topic.slice(0, 40) + '...' : topic,
+        description: 'Door kijker ingebracht gespreksthema',
+        mode,
+        scenario: topic,
+      };
+    default:
+      return {
+        title: topic.length > 40 ? topic.slice(0, 40) + '...' : topic,
+        description: 'Door kijker ingebracht onderwerp',
+        mode,
+        topic,
+      };
+  }
 }

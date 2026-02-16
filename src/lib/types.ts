@@ -261,6 +261,7 @@ export interface StartBattleRequest {
   bot2Id: string;
   mode: BattleMode;
   challengeIndex?: number;
+  customTopic?: string;
 }
 
 export interface VoteRequest {
