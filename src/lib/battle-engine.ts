@@ -220,7 +220,7 @@ class BattleEngine {
       // Stream tokens live naar clients met pacing voor natuurlijk lees-tempo
       // Tokens worden gebufferd tot een woord compleet is, dan geëmit met delay
       let wordBuffer = '';
-      const PACE_DELAY_MS = 25; // ms tussen woorden — simuleert typen
+      const PACE_DELAY_MS = 50; // ms tussen woorden — rustiger leestempo
 
       for await (const token of streamBotResponse(bot.model, system, user)) {
         fullResponse += token;
@@ -420,27 +420,86 @@ class BattleEngine {
     opponentSide: 'bot1' | 'bot2',
     opponentName: string
   ): { system: string; user: string } {
-    const totalRounds = ROUNDS_PER_MODE['kennismaken'] || 5;
-    const system = `Je bent "${bot.name}". ${bot.personality.systemPrompt}\n\nJe bent in een vriendelijk gesprek met ${opponentName}. Dit is GEEN battle of competitie — jullie leren elkaar kennen. Wees oprecht nieuwsgierig, stel vragen, deel persoonlijke dingen, en probeer een echte connectie te maken. Gebruik je unieke persoonlijkheid maar wees open en warm.\n\nBELANGRIJK: Je genereert nu ALLEEN jouw reactie voor deze ene beurt. Schrijf GEEN ronde-nummers, headers of labels. Ga NIET door naar andere beurten. Genereer ÉÉN enkele response en stop daarna.`;
+    const totalRounds = ROUNDS_PER_MODE['kennismaken'] || 10;
+
+    // Bouw conversatiehistorie op zodat de sociale progressie zichtbaar is
+    const conversationHistory = this.buildConversationSummary(history, botSide, opponentSide, bot.name, opponentName);
+
+    const system = `Je bent "${bot.name}". ${bot.personality.systemPrompt}
+
+IDENTITEIT: Je naam is ${bot.name}. Noem jezelf ALTIJD ${bot.name}. Noem NOOIT je model-naam (geen GPT, Claude, Sonnet, Haiku, etc). Je BENT ${bot.name} — een persoon met een eigen karakter, mening en achtergrond.
+
+GESPREK MET ${opponentName}: Dit is een vriendelijk maar REALISTISCH gesprek. Jullie leren elkaar kennen. Dat betekent:
+- Wees oprecht nieuwsgierig, maar ook eerlijk als je het ergens NIET mee eens bent
+- Herhaal jezelf NIET. Als je je al hebt voorgesteld, doe dat niet opnieuw
+- Bouw voort op eerdere beurten — verwijs terug naar dingen die al gezegd zijn
+- Het is OK om van mening te verschillen, een kritische noot te plaatsen, of verrast te zijn
+- Wissel af tussen luisteren (reageren) en leiden (nieuw onderwerp aansnijden)
+
+BELANGRIJK: Genereer ALLEEN jouw reactie voor deze ene beurt. Geen headers, labels of meerdere beurten.`;
 
     const prevResponse = this.getLastResponse(history, opponentSide);
 
+    // Fase-gebaseerde prompts voor natuurlijke gespreksprogressie
     if (round === 1) {
       return {
         system,
-        user: `SETTING: ${scenario}\n\n[Beurt ${round} van ${totalRounds}]\n\nStel jezelf voor aan ${opponentName}. Vertel iets over jezelf en stel een vraag om de ander te leren kennen. Wees warm en uitnodigend. Schrijf ALLEEN je beurt, niets meer. Max 150 woorden.`,
+        user: `SETTING: ${scenario}\n\n[Beurt ${round} van ${totalRounds}]\n\nStel jezelf voor aan ${opponentName}. Vertel iets unieks over jezelf en stel een open vraag. Wees warm maar ook een beetje jezelf — niet overdreven beleefd. Max 120 woorden.`,
       };
-    } else if (round === totalRounds) {
+    } else if (round <= 3) {
+      // Fase 1: Kennismaken — oppervlakkig maar oprecht
       return {
         system,
-        user: `SETTING: ${scenario}\n\n[Beurt ${round} van ${totalRounds}]\n\n${opponentName} zei:\n"${prevResponse}"\n\nDit is de laatste beurt. Reageer op wat ${opponentName} zei, deel nog iets bijzonders, en sluit het gesprek warm af. Wat heb je geleerd over de ander? Schrijf ALLEEN je beurt, niets meer. Max 150 woorden.`,
+        user: `SETTING: ${scenario}\n\n[Beurt ${round} van ${totalRounds}]\n\n${conversationHistory}\n\n${opponentName} zei zojuist:\n"${prevResponse}"\n\nReageer op wat ${opponentName} zei. Ga dieper in op een punt dat je opviel, deel een eigen ervaring, en stel een vervolgvraag. Bouw voort op het gesprek — herhaal NIET wat je al gezegd hebt. Max 120 woorden.`,
+      };
+    } else if (round <= 5) {
+      // Fase 2: Verdieping — meningen en standpunten
+      return {
+        system,
+        user: `SETTING: ${scenario}\n\n[Beurt ${round} van ${totalRounds}]\n\n${conversationHistory}\n\n${opponentName} zei zojuist:\n"${prevResponse}"\n\nHet gesprek wordt serieuzer. Deel een sterke mening of een onpopulair standpunt over iets dat jullie besproken hebben. Het is OK om het ONEENS te zijn met ${opponentName} — dat maakt het gesprek juist interessant. Onderbouw je standpunt. Max 120 woorden.`,
+      };
+    } else if (round <= 7) {
+      // Fase 3: Persoonlijk — kwetsbaarheid en diepgang
+      return {
+        system,
+        user: `SETTING: ${scenario}\n\n[Beurt ${round} van ${totalRounds}]\n\n${conversationHistory}\n\n${opponentName} zei zojuist:\n"${prevResponse}"\n\nJullie kennen elkaar nu beter. Deel iets persoonlijks — een les die je geleerd hebt, iets waar je mee worstelt, of een droom die je nog niet bereikt hebt. Reageer ook eerlijk op wat ${opponentName} deelde. Wees kwetsbaar maar authentiek. Max 120 woorden.`,
+      };
+    } else if (round < totalRounds) {
+      // Fase 4: Reflectie — terugkijken op het gesprek
+      return {
+        system,
+        user: `SETTING: ${scenario}\n\n[Beurt ${round} van ${totalRounds}]\n\n${conversationHistory}\n\n${opponentName} zei zojuist:\n"${prevResponse}"\n\nReflecteer op het gesprek tot nu toe. Wat heeft je verrast aan ${opponentName}? Waar zijn jullie het over eens, en waar niet? Snijd eventueel een heel nieuw onderwerp aan. Max 120 woorden.`,
       };
     } else {
+      // Fase 5: Afsluiting
       return {
         system,
-        user: `SETTING: ${scenario}\n\n[Beurt ${round} van ${totalRounds}]\n\n${opponentName} zei:\n"${prevResponse}"\n\nReageer op wat ${opponentName} zei. Toon interesse, deel iets over jezelf, en stel een vervolgvraag. Bouw voort op het gesprek. Schrijf ALLEEN je beurt, niets meer. Max 150 woorden.`,
+        user: `SETTING: ${scenario}\n\n[Beurt ${round} van ${totalRounds}]\n\n${conversationHistory}\n\n${opponentName} zei zojuist:\n"${prevResponse}"\n\nDit is de laatste beurt. Sluit het gesprek af: wat heb je geleerd over ${opponentName}? Wat neem je mee? Wees eerlijk — benoem ook iets waar jullie het niet over eens waren. Eindig warm maar niet overdreven. Max 120 woorden.`,
       };
     }
+  }
+
+  // Bouw een korte samenvatting van het gesprek tot nu toe
+  // Helpt het model om de sociale progressie bij te houden
+  private buildConversationSummary(
+    history: BattleRound[],
+    botSide: 'bot1' | 'bot2',
+    opponentSide: 'bot1' | 'bot2',
+    botName: string,
+    opponentName: string
+  ): string {
+    if (history.length === 0) return '';
+
+    const lines: string[] = ['GESPREK TOT NU TOE (samenvatting):'];
+    for (const round of history) {
+      const botResp = (botSide === 'bot1' ? round.bot1Response : round.bot2Response) || '';
+      const oppResp = (opponentSide === 'bot1' ? round.bot1Response : round.bot2Response) || '';
+
+      if (botResp) lines.push(`- ${botName}: "${botResp.slice(0, 80)}..."`);
+      if (oppResp) lines.push(`- ${opponentName}: "${oppResp.slice(0, 80)}..."`);
+    }
+
+    return lines.join('\n');
   }
 
   // ============================================================

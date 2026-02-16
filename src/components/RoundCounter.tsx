@@ -3,12 +3,13 @@
 interface RoundCounterProps {
   current: number;
   total: number;
+  label?: string;
 }
 
-export default function RoundCounter({ current, total }: RoundCounterProps) {
+export default function RoundCounter({ current, total, label = 'Ronde' }: RoundCounterProps) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm text-gray-400 font-medium">Ronde</span>
+      <span className="text-sm text-gray-400 font-medium">{label}</span>
       <div className="flex gap-1">
         {Array.from({ length: total }, (_, i) => (
           <div

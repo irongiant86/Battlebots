@@ -35,17 +35,21 @@ export function useBattle(battleId: string | null) {
   // Track hoeveel events we al verwerkt hebben — voorkomt dat gebatchte events verloren gaan
   const lastProcessedIndex = useRef(0);
 
-  // Haal initiële battle data op
+  // Haal initiële battle data op — inclusief rondes, status, winnerId
+  // Zo zien terugkerende kijkers direct alle content, ook zonder SSE events
   useEffect(() => {
     if (!battleId) return;
 
     fetch(`/api/battles/${battleId}`)
       .then((res) => res.json())
       .then((data) => {
-        setBattle(data.battle);
-        setStatus(data.battle?.status || 'pending');
-        if (data.battle?.reactions) {
-          setReactionCounts(data.battle.reactions);
+        const b = data.battle;
+        setBattle(b);
+        if (b) {
+          setStatus(b.status || 'pending');
+          if (b.currentRound) setCurrentRound(b.currentRound);
+          if (b.winnerId) setWinnerId(b.winnerId);
+          if (b.reactions) setReactionCounts(b.reactions);
         }
         setLoading(false);
       })
@@ -159,8 +163,8 @@ export function useBattle(battleId: string | null) {
     };
   }, []);
 
-  // Verzamelde rondes uit events (gededupliceerd op rondenummer)
-  // Replay + live events kunnen dezelfde ronde bevatten — Map voorkomt duplicaten
+  // Verzamelde rondes: seed vanuit initial battle data + SSE events
+  // Zo werkt het zowel bij terugkeren (battle data) als live kijken (SSE events)
   const completedRounds = useMemo(() => {
     const roundMap = new Map<number, {
       round: number;
@@ -169,9 +173,23 @@ export function useBattle(battleId: string | null) {
       commentary: string | null;
     }>();
 
+    // Seed vanuit battle data (voor terugkerende kijkers)
+    if (battle?.rounds) {
+      for (const r of battle.rounds) {
+        if (r.bot1Response || r.bot2Response) {
+          roundMap.set(r.roundNumber, {
+            round: r.roundNumber,
+            bot1Response: r.bot1Response || '',
+            bot2Response: r.bot2Response || '',
+            commentary: r.commentary ?? null,
+          });
+        }
+      }
+    }
+
+    // SSE events overschrijven met live data (wint van seed)
     for (const e of events) {
       if (e.type === 'round_complete') {
-        // Latere events overschrijven eerdere (live data wint van replay)
         roundMap.set(e.round, {
           round: e.round,
           bot1Response: e.bot1Response,
@@ -187,7 +205,7 @@ export function useBattle(battleId: string | null) {
     }
 
     return Array.from(roundMap.values()).sort((a, b) => a.round - b.round);
-  }, [events]);
+  }, [battle, events]);
 
   // Stuur een crowd reaction
   const sendReaction = useCallback(async (emoji: ReactionEmoji, bot: 'bot1' | 'bot2') => {

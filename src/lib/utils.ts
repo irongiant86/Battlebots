@@ -36,17 +36,17 @@ export const ROUNDS_PER_MODE: Record<string, number> = {
   roast: 4,
   puzzle: 1,
   improv: 6,
-  kennismaken: 5,
+  kennismaken: 10,
 };
 
 // Pauze in ms tussen rondes per mode (0 = geen pauze)
 export const INTERMISSION_MS: Record<string, number> = {
-  debate: 10000,
+  debate: 12000,
   creative: 0,
-  roast: 8000,
+  roast: 10000,
   puzzle: 0,
-  improv: 8000,
-  kennismaken: 10000,
+  improv: 10000,
+  kennismaken: 15000,
 };
 
 // Tijdformat — accepteert Date of string (JSON-geserialiseerde dates)

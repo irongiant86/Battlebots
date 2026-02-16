@@ -102,7 +102,7 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
 
       {/* Round counter + spectators */}
       <div className="flex items-center justify-between mb-4">
-        <RoundCounter current={currentRound} total={battle.totalRounds} />
+        <RoundCounter current={currentRound} total={battle.totalRounds} label={isKennismaken ? 'Beurt' : 'Ronde'} />
         <div className="flex items-center gap-4 text-xs text-gray-500">
           {spectatorCount > 0 && <span>{spectatorCount} kijkers</span>}
           {connected && (
