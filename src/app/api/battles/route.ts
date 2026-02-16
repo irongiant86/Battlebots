@@ -8,28 +8,37 @@ import { getRandomChallenge, getChallenge } from '@/lib/challenges';
 import { battleEngine } from '@/lib/battle-engine';
 
 export async function POST(req: NextRequest) {
+  console.log('[battles/POST] Battle start request ontvangen');
+
   const sessionId = req.cookies.get('session')?.value;
   if (!sessionId) {
+    console.log('[battles/POST] Geen session cookie gevonden');
     return NextResponse.json({ error: 'Niet ingelogd' }, { status: 401 });
   }
 
   const userId = store.getUserIdBySession(sessionId);
   if (!userId) {
+    console.log('[battles/POST] Sessie niet gevonden in store:', sessionId);
     return NextResponse.json({ error: 'Sessie verlopen' }, { status: 401 });
   }
 
+  console.log('[battles/POST] User:', userId);
+
   try {
     const body: StartBattleRequest = await req.json();
+    console.log('[battles/POST] Request body:', JSON.stringify(body));
 
     const bot1 = store.getBot(body.bot1Id);
     const bot2 = store.getBot(body.bot2Id);
 
     if (!bot1 || !bot2) {
+      console.log('[battles/POST] Bot niet gevonden:', body.bot1Id, body.bot2Id);
       return NextResponse.json({ error: 'Bot niet gevonden' }, { status: 404 });
     }
 
     // Alleen eigen bot of template mag als bot1
     if (bot1.ownerId !== userId && !bot1.isTemplate) {
+      console.log('[battles/POST] Geen toegang tot bot1:', bot1.ownerId, 'vs user:', userId);
       return NextResponse.json({ error: 'Je kunt alleen met je eigen bot vechten' }, { status: 403 });
     }
 
@@ -70,12 +79,17 @@ export async function POST(req: NextRequest) {
     };
 
     store.createBattle(battle);
+    console.log('[battles/POST] Battle aangemaakt:', battle.id, battle.mode);
+    console.log('[battles/POST] Bot1:', bot1.name, '(' + bot1.model + ') vs Bot2:', bot2.name, '(' + bot2.model + ')');
 
-    // Start de battle asynchroon
-    battleEngine.runBattle(battle);
+    // Start de battle asynchroon (fire-and-forget)
+    battleEngine.runBattle(battle).catch((err) => {
+      console.error('[battles/POST] Battle engine crash:', err);
+    });
 
     return NextResponse.json({ battle }, { status: 201 });
-  } catch {
+  } catch (err) {
+    console.error('[battles/POST] Ongeldige request:', err);
     return NextResponse.json({ error: 'Ongeldige request' }, { status: 400 });
   }
 }

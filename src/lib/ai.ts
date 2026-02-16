@@ -15,6 +15,7 @@ export async function* streamBotResponse(
   userPrompt: string
 ): AsyncGenerator<string> {
   const provider = getProvider(model);
+  console.log(`[AI] Streaming start: model=${model}, provider=${provider}`);
 
   if (provider === 'anthropic') {
     yield* streamAnthropic(model, systemPrompt, userPrompt);
@@ -23,6 +24,8 @@ export async function* streamBotResponse(
   } else {
     throw new Error(`Onbekende provider voor model: ${model}`);
   }
+
+  console.log(`[AI] Streaming klaar: model=${model}`);
 }
 
 // Niet-streaming versie voor eenvoudige calls
@@ -48,10 +51,12 @@ async function* streamAnthropic(
 ): AsyncGenerator<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
+    console.error('[AI/Anthropic] ANTHROPIC_API_KEY niet gezet!');
     throw new Error('ANTHROPIC_API_KEY is niet geconfigureerd');
   }
 
   const maxTokens = AI_MODELS[model].maxTokens;
+  console.log(`[AI/Anthropic] Request naar ${model}, max_tokens=${maxTokens}`);
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -69,14 +74,18 @@ async function* streamAnthropic(
     }),
   });
 
+  console.log(`[AI/Anthropic] Response status: ${response.status}`);
+
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`[AI/Anthropic] API fout: ${response.status}`, errorText);
     throw new Error(`Anthropic API fout (${response.status}): ${errorText}`);
   }
 
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let tokenCount = 0;
 
   try {
     while (true) {
@@ -118,10 +127,12 @@ async function* streamOpenAI(
 ): AsyncGenerator<string> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
+    console.error('[AI/OpenAI] OPENAI_API_KEY niet gezet!');
     throw new Error('OPENAI_API_KEY is niet geconfigureerd');
   }
 
   const maxTokens = AI_MODELS[model].maxTokens;
+  console.log(`[AI/OpenAI] Request naar ${model}, max_tokens=${maxTokens}`);
 
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -140,8 +151,11 @@ async function* streamOpenAI(
     }),
   });
 
+  console.log(`[AI/OpenAI] Response status: ${response.status}`);
+
   if (!response.ok) {
     const errorText = await response.text();
+    console.error(`[AI/OpenAI] API fout: ${response.status}`, errorText);
     throw new Error(`OpenAI API fout (${response.status}): ${errorText}`);
   }
 

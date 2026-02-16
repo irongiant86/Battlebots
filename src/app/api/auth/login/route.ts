@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     // Maak session
     const sessionId = generateId();
     store.createSession(sessionId, user.id);
+    console.log(`[auth/login] User ingelogd: ${user.username} (${user.id}), session: ${sessionId}`);
 
     const response = NextResponse.json({ user });
     response.cookies.set('session', sessionId, {

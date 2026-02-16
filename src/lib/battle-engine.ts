@@ -44,19 +44,25 @@ class BattleEngine {
 
   // Start en voer een complete battle uit
   async runBattle(battle: Battle): Promise<void> {
+    console.log(`[BattleEngine] Battle starten: ${battle.id} (${battle.mode})`);
+
     const bot1 = store.getBot(battle.bot1.botId);
     const bot2 = store.getBot(battle.bot2.botId);
 
     if (!bot1 || !bot2) {
+      console.error('[BattleEngine] Bot(s) niet gevonden in store');
       this.emit(battle.id, { type: 'error', message: 'Bot niet gevonden' });
       return;
     }
+
+    console.log(`[BattleEngine] ${bot1.name} (${bot1.model}) vs ${bot2.name} (${bot2.model})`);
 
     // Update status naar live
     store.updateBattle(battle.id, { status: 'live' });
 
     try {
       const totalRounds = ROUNDS_PER_MODE[battle.mode] || 3;
+      console.log(`[BattleEngine] Totaal rondes: ${totalRounds}`);
       store.updateBattle(battle.id, { totalRounds });
 
       for (let round = 1; round <= totalRounds; round++) {
@@ -141,7 +147,7 @@ class BattleEngine {
       store.updateBattle(battle.id, { status: 'voting' });
       this.emit(battle.id, { type: 'voting_start' });
     } catch (error) {
-      console.error('Battle error:', error);
+      console.error('[BattleEngine] Battle error:', error);
       this.emit(battle.id, {
         type: 'error',
         message: error instanceof Error ? error.message : 'Onbekende fout',
@@ -160,6 +166,9 @@ class BattleEngine {
   ): Promise<string> {
     const { system, user } = this.buildRoundPrompt(battle, bot, botSide, round, previousRounds);
     const modelConfig = AI_MODELS[bot.model];
+
+    console.log(`[BattleEngine] Turn: ${bot.name} (${bot.model}) ronde ${round}`);
+    console.log(`[BattleEngine] System prompt lengte: ${system.length}, User prompt lengte: ${user.length}`);
 
     // Emit round start met model info
     this.emit(battle.id, {

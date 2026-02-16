@@ -20,6 +20,7 @@ export default function FightPage() {
   const [selectedMode, setSelectedMode] = useState<BattleMode | null>(null);
   const [selectedOpponent, setSelectedOpponent] = useState<Bot | null>(null);
   const [starting, setStarting] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (user) {
@@ -35,6 +36,7 @@ export default function FightPage() {
   const startBattle = async () => {
     if (!selectedBot || !selectedMode || !selectedOpponent) return;
     setStarting(true);
+    setError('');
 
     try {
       const res = await fetch('/api/battles', {
@@ -48,10 +50,17 @@ export default function FightPage() {
       });
 
       const data = await res.json();
+
       if (res.ok) {
         router.push(`/arena/${data.battle.id}`);
+      } else {
+        console.error('Battle start failed:', res.status, data);
+        setError(data.error || `Fout bij starten battle (${res.status})`);
+        setStarting(false);
       }
-    } catch {
+    } catch (err) {
+      console.error('Battle start network error:', err);
+      setError('Netwerkfout — probeer opnieuw');
       setStarting(false);
     }
   };
@@ -181,6 +190,9 @@ export default function FightPage() {
                 <ModelBadge model={selectedOpponent.model} size="sm" />
               </div>
             </div>
+            {error && (
+              <p className="text-sm text-red-400 mb-4">{error}</p>
+            )}
             <button
               onClick={startBattle}
               disabled={starting}
