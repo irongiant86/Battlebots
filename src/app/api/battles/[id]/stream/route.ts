@@ -42,9 +42,14 @@ export async function GET(
         spectatorCount: (battle.spectatorCount || 0) + 1,
       });
 
-      // Stuur bestaande rondes als de battle al bezig is
-      if (battle.rounds.length > 0) {
-        for (const round of battle.rounds) {
+      // Registreer als listener VOOR replay — voorkomt race condition
+      // waarbij een ronde compleet wordt tussen snapshot en subscribe
+      const unsubscribe = battleEngine.subscribe(id, send);
+
+      // Replay bestaande rondes (client dedupliceeert op roundnummer)
+      const freshBattle = store.getBattle(id);
+      if (freshBattle && freshBattle.rounds.length > 0) {
+        for (const round of freshBattle.rounds) {
           if (round.bot1Response && round.bot2Response) {
             send({
               type: 'round_complete',
@@ -52,7 +57,6 @@ export async function GET(
               bot1Response: round.bot1Response,
               bot2Response: round.bot2Response,
             });
-            // Stuur ook bestaande commentaren
             if (round.commentary) {
               send({
                 type: 'commentary',
@@ -65,14 +69,11 @@ export async function GET(
       }
 
       // Als battle al klaar is
-      if (battle.status === 'voting') {
+      if (freshBattle?.status === 'voting') {
         send({ type: 'voting_start' });
-      } else if (battle.status === 'completed') {
-        send({ type: 'battle_complete', winnerId: battle.winnerId });
+      } else if (freshBattle?.status === 'completed') {
+        send({ type: 'battle_complete', winnerId: freshBattle.winnerId });
       }
-
-      // Registreer als listener
-      const unsubscribe = battleEngine.subscribe(id, send);
 
       // Cleanup bij disconnect
       req.signal.addEventListener('abort', () => {

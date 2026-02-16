@@ -159,29 +159,34 @@ export function useBattle(battleId: string | null) {
     };
   }, []);
 
-  // Verzamelde rondes uit events (inclusief commentaar)
+  // Verzamelde rondes uit events (gededupliceerd op rondenummer)
+  // Replay + live events kunnen dezelfde ronde bevatten — Map voorkomt duplicaten
   const completedRounds = useMemo(() => {
-    const rounds = events
-      .filter((e): e is Extract<BattleEvent, { type: 'round_complete' }> => e.type === 'round_complete')
-      .map((e) => ({
-        round: e.round,
-        bot1Response: e.bot1Response,
-        bot2Response: e.bot2Response,
-        commentary: null as string | null,
-      }));
+    const roundMap = new Map<number, {
+      round: number;
+      bot1Response: string;
+      bot2Response: string;
+      commentary: string | null;
+    }>();
 
-    // Koppel commentaar aan de bijbehorende ronde
-    const commentaries = events
-      .filter((e): e is Extract<BattleEvent, { type: 'commentary' }> => e.type === 'commentary');
-
-    for (const c of commentaries) {
-      const round = rounds.find((r) => r.round === c.round);
-      if (round) {
-        round.commentary = c.text;
+    for (const e of events) {
+      if (e.type === 'round_complete') {
+        // Latere events overschrijven eerdere (live data wint van replay)
+        roundMap.set(e.round, {
+          round: e.round,
+          bot1Response: e.bot1Response,
+          bot2Response: e.bot2Response,
+          commentary: roundMap.get(e.round)?.commentary ?? null,
+        });
+      } else if (e.type === 'commentary') {
+        const round = roundMap.get(e.round);
+        if (round) {
+          round.commentary = e.text;
+        }
       }
     }
 
-    return rounds;
+    return Array.from(roundMap.values()).sort((a, b) => a.round - b.round);
   }, [events]);
 
   // Stuur een crowd reaction

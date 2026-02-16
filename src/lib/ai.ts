@@ -99,11 +99,15 @@ async function* streamAnthropic(
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') return;
+          if (jsonStr === '[DONE]') {
+            console.log(`[AI/Anthropic] ${model}: ${tokenCount} tokens ontvangen`);
+            return;
+          }
 
           try {
             const data = JSON.parse(jsonStr);
             if (data.type === 'content_block_delta' && data.delta?.text) {
+              tokenCount++;
               yield data.delta.text;
             }
           } catch {
@@ -111,6 +115,10 @@ async function* streamAnthropic(
           }
         }
       }
+    }
+
+    if (tokenCount === 0) {
+      console.warn(`[AI/Anthropic] WAARSCHUWING: ${model} gaf 0 tokens terug`);
     }
   } finally {
     reader.releaseLock();
@@ -163,6 +171,8 @@ async function* streamOpenAI(
   const reader = response.body!.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let tokenCount = 0;
+  let finishReason: string | null = null;
 
   try {
     while (true) {
@@ -176,12 +186,22 @@ async function* streamOpenAI(
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const jsonStr = line.slice(6).trim();
-          if (jsonStr === '[DONE]') return;
+          if (jsonStr === '[DONE]') {
+            if (tokenCount === 0) {
+              console.warn(`[AI/OpenAI] WAARSCHUWING: ${model} gaf 0 tokens terug (finish_reason=${finishReason})`);
+            } else {
+              console.log(`[AI/OpenAI] ${model}: ${tokenCount} tokens ontvangen (finish_reason=${finishReason})`);
+            }
+            return;
+          }
 
           try {
             const data = JSON.parse(jsonStr);
             const content = data.choices?.[0]?.delta?.content;
+            const reason = data.choices?.[0]?.finish_reason;
+            if (reason) finishReason = reason;
             if (content) {
+              tokenCount++;
               yield content;
             }
           } catch {
@@ -189,6 +209,11 @@ async function* streamOpenAI(
           }
         }
       }
+    }
+
+    // Stream eindigde zonder [DONE] marker
+    if (tokenCount === 0) {
+      console.warn(`[AI/OpenAI] WAARSCHUWING: ${model} stream eindigde zonder tokens (geen [DONE])`);
     }
   } finally {
     reader.releaseLock();

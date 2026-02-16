@@ -146,8 +146,10 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
                 }`}>
                   {roundLabel} {round.round}
                 </div>
-                <p className="text-sm text-gray-300 font-mono whitespace-pre-wrap leading-relaxed">
-                  {round.bot1Response}
+                <p className={`text-sm font-mono whitespace-pre-wrap leading-relaxed ${
+                  round.bot1Response ? 'text-gray-300' : 'text-gray-600 italic'
+                }`}>
+                  {round.bot1Response || `${battle.bot1.botName} gaf geen antwoord`}
                 </p>
               </div>
             ))}
@@ -197,8 +199,10 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
                 }`}>
                   {roundLabel} {round.round}
                 </div>
-                <p className="text-sm text-gray-300 font-mono whitespace-pre-wrap leading-relaxed">
-                  {round.bot2Response}
+                <p className={`text-sm font-mono whitespace-pre-wrap leading-relaxed ${
+                  round.bot2Response ? 'text-gray-300' : 'text-gray-600 italic'
+                }`}>
+                  {round.bot2Response || `${battle.bot2.botName} gaf geen antwoord`}
                 </p>
               </div>
             ))}
