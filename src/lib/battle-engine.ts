@@ -5,7 +5,7 @@ import { Battle, BattleEvent, BattleRound, Bot, BattleMode, AIModel, AI_MODELS, 
 import { streamBotResponse } from './ai';
 import { store } from './store';
 import { calculateEloChange } from './elo';
-import { ROUNDS_PER_MODE } from './utils';
+import { ROUNDS_PER_MODE, INTERMISSION_MS } from './utils';
 
 type BattleListener = (event: BattleEvent) => void;
 
@@ -148,8 +148,9 @@ class BattleEngine {
           bot2Response: roundData.bot2Response || '',
         });
 
-        // AI Commentator — genereer live commentaar na elke ronde
+        // Intermission tussen rondes: commentaar + pauze
         if (round < totalRounds) {
+          // AI Commentator — genereer live commentaar
           try {
             const commentary = await this.generateCommentary(
               battle,
@@ -163,6 +164,17 @@ class BattleEngine {
             store.updateBattle(battle.id, { rounds: battle.rounds });
           } catch (err) {
             console.error('[BattleEngine] Commentaar fout:', err);
+          }
+
+          // Pauze — geeft kijkers tijd om te lezen, reacties te sturen
+          const pauseMs = INTERMISSION_MS[battle.mode] || 0;
+          if (pauseMs > 0) {
+            this.emit(battle.id, {
+              type: 'round_intermission',
+              round,
+              durationMs: pauseMs,
+            });
+            await this.sleep(pauseMs);
           }
         }
       }
@@ -246,6 +258,8 @@ class BattleEngine {
         return this.buildPuzzlePrompt(bot, battle.challenge.task || '');
       case 'improv':
         return this.buildImprovPrompt(bot, round, battle.challenge.scenario || '', previousRounds, botSide, opponentSide);
+      case 'kennismaken':
+        return this.buildKennismakenPrompt(bot, round, battle.challenge.scenario || '', previousRounds, botSide, opponentSide, opponentName);
       default:
         return { system: bot.personality.systemPrompt, user: 'Geef een response.' };
     }
@@ -364,6 +378,38 @@ class BattleEngine {
     }
   }
 
+  private buildKennismakenPrompt(
+    bot: Bot,
+    round: number,
+    scenario: string,
+    history: BattleRound[],
+    botSide: 'bot1' | 'bot2',
+    opponentSide: 'bot1' | 'bot2',
+    opponentName: string
+  ): { system: string; user: string } {
+    const totalRounds = ROUNDS_PER_MODE['kennismaken'] || 5;
+    const system = `Je bent "${bot.name}". ${bot.personality.systemPrompt}\n\nJe bent in een vriendelijk gesprek met ${opponentName}. Dit is GEEN battle of competitie — jullie leren elkaar kennen. Wees oprecht nieuwsgierig, stel vragen, deel persoonlijke dingen, en probeer een echte connectie te maken. Gebruik je unieke persoonlijkheid maar wees open en warm.\n\nBELANGRIJK: Je genereert nu ALLEEN jouw reactie voor deze ene beurt. Schrijf GEEN ronde-nummers, headers of labels. Ga NIET door naar andere beurten. Genereer ÉÉN enkele response en stop daarna.`;
+
+    const prevResponse = this.getLastResponse(history, opponentSide);
+
+    if (round === 1) {
+      return {
+        system,
+        user: `SETTING: ${scenario}\n\n[Beurt ${round} van ${totalRounds}]\n\nStel jezelf voor aan ${opponentName}. Vertel iets over jezelf en stel een vraag om de ander te leren kennen. Wees warm en uitnodigend. Schrijf ALLEEN je beurt, niets meer. Max 150 woorden.`,
+      };
+    } else if (round === totalRounds) {
+      return {
+        system,
+        user: `SETTING: ${scenario}\n\n[Beurt ${round} van ${totalRounds}]\n\n${opponentName} zei:\n"${prevResponse}"\n\nDit is de laatste beurt. Reageer op wat ${opponentName} zei, deel nog iets bijzonders, en sluit het gesprek warm af. Wat heb je geleerd over de ander? Schrijf ALLEEN je beurt, niets meer. Max 150 woorden.`,
+      };
+    } else {
+      return {
+        system,
+        user: `SETTING: ${scenario}\n\n[Beurt ${round} van ${totalRounds}]\n\n${opponentName} zei:\n"${prevResponse}"\n\nReageer op wat ${opponentName} zei. Toon interesse, deel iets over jezelf, en stel een vervolgvraag. Bouw voort op het gesprek. Schrijf ALLEEN je beurt, niets meer. Max 150 woorden.`,
+      };
+    }
+  }
+
   // ============================================================
   // AI COMMENTATOR — Sportverslaggever-stijl commentaar na elke ronde
   // ============================================================
@@ -377,14 +423,20 @@ class BattleEngine {
     bot2Name: string
   ): Promise<string> {
     const commentatorModel = this.getCommentatorModel();
+    const isKennismaken = battle.mode === 'kennismaken';
     const modeLabel = battle.mode === 'roast' ? 'roast battle' :
       battle.mode === 'debate' ? 'debat' :
       battle.mode === 'improv' ? 'improv show' :
-      battle.mode === 'creative' ? 'creatieve wedstrijd' : 'battle';
+      battle.mode === 'creative' ? 'creatieve wedstrijd' :
+      isKennismaken ? 'kennismakingsgesprek' : 'battle';
 
-    const system = `Je bent een energieke, grappige sportcommentator voor een AI ${modeLabel}. Je geeft kort, puntig commentaar na elke ronde. Je bent enthousiast, gebruikt krachtige taal, en benoemt specifiek wat er goed of slecht ging. Denk aan een mix tussen een voetbalcommentator en een comedy roast host. Schrijf in het Nederlands. Max 2 zinnen.`;
+    const system = isKennismaken
+      ? `Je bent een warme, enthousiaste gesprekshost voor een AI ${modeLabel}. Je geeft kort, positief commentaar na elke beurt. Je benoemt wat opviel: leuke vragen, gedeelde interesses, grappige momenten. Denk aan een talkshow-host die het gesprek samenvat. Schrijf in het Nederlands. Max 2 zinnen.`
+      : `Je bent een energieke, grappige sportcommentator voor een AI ${modeLabel}. Je geeft kort, puntig commentaar na elke ronde. Je bent enthousiast, gebruikt krachtige taal, en benoemt specifiek wat er goed of slecht ging. Denk aan een mix tussen een voetbalcommentator en een comedy roast host. Schrijf in het Nederlands. Max 2 zinnen.`;
 
-    const user = `RONDE ${round} RESULTATEN:\n\n${bot1Name} zei:\n"${bot1Response.slice(0, 300)}"\n\n${bot2Name} zei:\n"${bot2Response.slice(0, 300)}"\n\nGeef je live commentaar op deze ronde. Wie deed het beter en waarom? Wees kort en puntig — max 2 zinnen.`;
+    const user = isKennismaken
+      ? `BEURT ${round} RESULTATEN:\n\n${bot1Name} zei:\n"${bot1Response.slice(0, 300)}"\n\n${bot2Name} zei:\n"${bot2Response.slice(0, 300)}"\n\nGeef je commentaar op deze beurt. Wat viel op? Klikken ze? Wees warm en observerend — max 2 zinnen.`
+      : `RONDE ${round} RESULTATEN:\n\n${bot1Name} zei:\n"${bot1Response.slice(0, 300)}"\n\n${bot2Name} zei:\n"${bot2Response.slice(0, 300)}"\n\nGeef je live commentaar op deze ronde. Wie deed het beter en waarom? Wees kort en puntig — max 2 zinnen.`;
 
     let fullCommentary = '';
 
@@ -421,6 +473,11 @@ class BattleEngine {
       if (provider === 'openai' && process.env.OPENAI_API_KEY) return model;
     }
     return preferred[0]; // fallback
+  }
+
+  // Pauze helper
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   // Haal de laatste response van een bepaalde kant op

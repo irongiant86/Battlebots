@@ -31,6 +31,7 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
     liveCommentary,
     reactionCounts,
     sendReaction,
+    intermission,
   } = useBattle(battleId);
 
   const [voted, setVoted] = useState<'bot1' | 'bot2' | null>(null);
@@ -73,6 +74,8 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
     );
   }
 
+  const isKennismaken = battle.mode === 'kennismaken';
+  const roundLabel = isKennismaken ? 'Beurt' : 'Ronde';
   const bot1Votes = battle.votes?.filter((v) => v.choice === 'bot1').length || 0;
   const bot2Votes = battle.votes?.filter((v) => v.choice === 'bot2').length || 0;
 
@@ -113,70 +116,86 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
 
       {/* Split screen arena */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        {/* Bot 1 — Blauw */}
-        <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 overflow-hidden">
-          <div className="p-4 border-b border-blue-500/10 flex items-center gap-3">
-            <BotAvatar avatar={battle.bot1.botAvatar} size={48} glowColor="#2d7aff" />
+        {/* Bot 1 */}
+        <div className={`rounded-xl border overflow-hidden ${
+          isKennismaken
+            ? 'border-emerald-500/20 bg-emerald-500/5'
+            : 'border-blue-500/20 bg-blue-500/5'
+        }`}>
+          <div className={`p-4 border-b flex items-center gap-3 ${
+            isKennismaken ? 'border-emerald-500/10' : 'border-blue-500/10'
+          }`}>
+            <BotAvatar avatar={battle.bot1.botAvatar} size={48} glowColor={isKennismaken ? '#10b981' : '#2d7aff'} />
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-blue-400 truncate">
+              <div className={`font-bold truncate ${isKennismaken ? 'text-emerald-400' : 'text-blue-400'}`}>
                 {battle.bot1.botName}
               </div>
               <ModelBadge model={battle.bot1.botModel} size="sm" />
             </div>
-            {currentBot === battle.bot1.botName && status === 'live' && (
-              <span className="text-xs text-blue-400 animate-pulse">
-                denkt na...
+            {currentBot === battle.bot1.botName && status === 'live' && !intermission.active && (
+              <span className={`text-xs animate-pulse ${isKennismaken ? 'text-emerald-400' : 'text-blue-400'}`}>
+                {isKennismaken ? 'typt...' : 'denkt na...'}
               </span>
             )}
           </div>
           <div className="p-4 min-h-[200px] max-h-[500px] overflow-y-auto">
-            {/* Voltooide rondes */}
             {completedRounds.map((round) => (
               <div key={round.round} className="mb-4">
-                <div className="text-[10px] text-blue-500/50 uppercase tracking-wider mb-1">
-                  Ronde {round.round}
+                <div className={`text-[10px] uppercase tracking-wider mb-1 ${
+                  isKennismaken ? 'text-emerald-500/50' : 'text-blue-500/50'
+                }`}>
+                  {roundLabel} {round.round}
                 </div>
                 <p className="text-sm text-gray-300 font-mono whitespace-pre-wrap leading-relaxed">
                   {round.bot1Response}
                 </p>
               </div>
             ))}
-            {/* Live tekst */}
             {liveText.bot1 && (
               <div>
-                <div className="text-[10px] text-blue-500/50 uppercase tracking-wider mb-1">
-                  Ronde {currentRound}
+                <div className={`text-[10px] uppercase tracking-wider mb-1 ${
+                  isKennismaken ? 'text-emerald-500/50' : 'text-blue-500/50'
+                }`}>
+                  {roundLabel} {currentRound}
                 </div>
                 <TypewriterText
                   text={liveText.bot1}
-                  className="text-blue-100"
+                  className={isKennismaken ? 'text-emerald-100' : 'text-blue-100'}
                 />
               </div>
             )}
           </div>
         </div>
 
-        {/* Bot 2 — Rood */}
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 overflow-hidden">
-          <div className="p-4 border-b border-red-500/10 flex items-center gap-3">
-            <BotAvatar avatar={battle.bot2.botAvatar} size={48} glowColor="#ff2d55" />
+        {/* Bot 2 */}
+        <div className={`rounded-xl border overflow-hidden ${
+          isKennismaken
+            ? 'border-violet-500/20 bg-violet-500/5'
+            : 'border-red-500/20 bg-red-500/5'
+        }`}>
+          <div className={`p-4 border-b flex items-center gap-3 ${
+            isKennismaken ? 'border-violet-500/10' : 'border-red-500/10'
+          }`}>
+            <BotAvatar avatar={battle.bot2.botAvatar} size={48} glowColor={isKennismaken ? '#8b5cf6' : '#ff2d55'} />
             <div className="flex-1 min-w-0">
-              <div className="font-bold text-red-400 truncate">
+              <div className={`font-bold truncate ${isKennismaken ? 'text-violet-400' : 'text-red-400'}`}>
                 {battle.bot2.botName}
               </div>
               <ModelBadge model={battle.bot2.botModel} size="sm" />
             </div>
-            {currentBot === battle.bot2.botName && status === 'live' && (
-              <span className="text-xs text-red-400 animate-pulse">
-                denkt na...
+            {currentBot === battle.bot2.botName && status === 'live' && !intermission.active && (
+              <span className={`text-xs animate-pulse ${isKennismaken ? 'text-violet-400' : 'text-red-400'}`}>
+                {isKennismaken ? 'typt...' : 'denkt na...'}
               </span>
             )}
           </div>
           <div className="p-4 min-h-[200px] max-h-[500px] overflow-y-auto">
             {completedRounds.map((round) => (
               <div key={round.round} className="mb-4">
-                <div className="text-[10px] text-red-500/50 uppercase tracking-wider mb-1">
-                  Ronde {round.round}
+                <div className={`text-[10px] uppercase tracking-wider mb-1 ${
+                  isKennismaken ? 'text-violet-500/50' : 'text-red-500/50'
+                }`}>
+                  {roundLabel} {round.round}
                 </div>
                 <p className="text-sm text-gray-300 font-mono whitespace-pre-wrap leading-relaxed">
                   {round.bot2Response}
@@ -185,12 +204,14 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
             ))}
             {liveText.bot2 && (
               <div>
-                <div className="text-[10px] text-red-500/50 uppercase tracking-wider mb-1">
-                  Ronde {currentRound}
+                <div className={`text-[10px] uppercase tracking-wider mb-1 ${
+                  isKennismaken ? 'text-violet-500/50' : 'text-red-500/50'
+                }`}>
+                  {roundLabel} {currentRound}
                 </div>
                 <TypewriterText
                   text={liveText.bot2}
-                  className="text-red-100"
+                  className={isKennismaken ? 'text-violet-100' : 'text-red-100'}
                 />
               </div>
             )}
@@ -198,8 +219,48 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
         </div>
       </div>
 
-      {/* AI Commentator */}
-      {liveCommentary && status === 'live' && (
+      {/* Intermission — pauze tussen rondes met commentaar + countdown + reacties */}
+      {intermission.active && status === 'live' && (
+        <div className="mb-6 rounded-xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm">🎙️</span>
+              <span className="text-xs text-amber-400 uppercase tracking-wider font-bold">
+                {isKennismaken ? 'Tussenpauze' : 'Intermission'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full border-2 border-amber-500/50 flex items-center justify-center">
+                <span className="text-xs text-amber-400 font-mono font-bold">
+                  {intermission.secondsLeft}
+                </span>
+              </div>
+              <span className="text-[10px] text-amber-500/60">
+                Volgende {roundLabel.toLowerCase()} in...
+              </span>
+            </div>
+          </div>
+
+          {/* Commentary */}
+          {liveCommentary && (
+            <p className="text-sm text-amber-200/90 italic leading-relaxed mb-4">
+              {liveCommentary}
+            </p>
+          )}
+
+          {/* Crowd reactions during intermission */}
+          <CrowdReactions
+            bot1Name={battle.bot1.botName}
+            bot2Name={battle.bot2.botName}
+            bot1Count={reactionCounts.bot1}
+            bot2Count={reactionCounts.bot2}
+            onReact={sendReaction}
+          />
+        </div>
+      )}
+
+      {/* AI Commentator (wanneer nog geen intermission maar wel commentaar) */}
+      {liveCommentary && status === 'live' && !intermission.active && (
         <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm">🎙️</span>
@@ -213,15 +274,15 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
         </div>
       )}
 
-      {/* Completed round commentaries */}
-      {completedRounds.some((r) => r.commentary) && status !== 'live' && (
+      {/* Completed round commentaries (na afloop) */}
+      {completedRounds.some((r) => r.commentary) && (status === 'voting' || status === 'completed') && (
         <div className="mb-6 space-y-2">
           {completedRounds.filter((r) => r.commentary).map((round) => (
             <div key={`commentary-${round.round}`} className="rounded-xl border border-amber-500/10 bg-amber-500/5 p-3">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-xs">🎙️</span>
                 <span className="text-[10px] text-amber-500/50 uppercase tracking-wider">
-                  Commentaar ronde {round.round}
+                  Commentaar {roundLabel.toLowerCase()} {round.round}
                 </span>
               </div>
               <p className="text-xs text-amber-200/70 italic">
@@ -232,8 +293,8 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
         </div>
       )}
 
-      {/* Crowd Reactions */}
-      {status === 'live' && (
+      {/* Crowd Reactions (niet-intermission, live battle) */}
+      {status === 'live' && !intermission.active && (
         <CrowdReactions
           bot1Name={battle.bot1.botName}
           bot2Name={battle.bot2.botName}
@@ -247,21 +308,31 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
       {status === 'voting' && !voted && (
         <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-6 text-center">
           <h3 className="text-lg font-chakra font-bold text-white mb-2">
-            Wie wint?
+            {isKennismaken ? 'Wie was de beste gesprekspartner?' : 'Wie wint?'}
           </h3>
           <p className="text-sm text-gray-400 mb-4">
-            Stem op de bot die het beste presteerde
+            {isKennismaken
+              ? 'Stem op de bot die het leukste gesprek voerde'
+              : 'Stem op de bot die het beste presteerde'}
           </p>
           <div className="flex gap-4 justify-center">
             <button
               onClick={() => handleVote('bot1')}
-              className="px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-medium transition-colors"
+              className={`px-6 py-3 text-white rounded-xl font-medium transition-colors ${
+                isKennismaken
+                  ? 'bg-emerald-600 hover:bg-emerald-500'
+                  : 'bg-blue-600 hover:bg-blue-500'
+              }`}
             >
               {battle.bot1.botName}
             </button>
             <button
               onClick={() => handleVote('bot2')}
-              className="px-6 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-medium transition-colors"
+              className={`px-6 py-3 text-white rounded-xl font-medium transition-colors ${
+                isKennismaken
+                  ? 'bg-violet-600 hover:bg-violet-500'
+                  : 'bg-red-600 hover:bg-red-500'
+              }`}
             >
               {battle.bot2.botName}
             </button>
@@ -288,13 +359,13 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
       {status === 'completed' && winnerId && (
         <div className="mt-6 text-center">
           <div className="text-4xl mb-2">
-            {winnerId === battle.bot1.botId ? '\uD83C\uDF89' : '\uD83C\uDF89'}
+            {isKennismaken ? '\uD83E\uDD1D' : '\uD83C\uDF89'}
           </div>
           <h2 className="text-2xl font-chakra font-bold text-amber-500">
             {winnerId === battle.bot1.botId
               ? battle.bot1.botName
               : battle.bot2.botName}{' '}
-            wint!
+            {isKennismaken ? 'was de beste gesprekspartner!' : 'wint!'}
           </h2>
           {battle.eloChange > 0 && (
             <p className="text-sm text-gray-400 mt-1">
@@ -305,10 +376,10 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
       )}
 
       {/* Status indicator */}
-      {status === 'live' && currentBotModel && (
+      {status === 'live' && currentBotModel && !intermission.active && (
         <div className="mt-4 text-center">
           <p className="text-xs text-gray-600">
-            {currentBot} denkt na met {currentBotModel}...
+            {currentBot} {isKennismaken ? 'typt met' : 'denkt na met'} {currentBotModel}...
           </p>
         </div>
       )}

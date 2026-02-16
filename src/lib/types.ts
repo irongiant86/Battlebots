@@ -185,7 +185,7 @@ export interface Battle {
   completedAt: Date | null;
 }
 
-export type BattleMode = 'debate' | 'creative' | 'roast' | 'puzzle' | 'improv';
+export type BattleMode = 'debate' | 'creative' | 'roast' | 'puzzle' | 'improv' | 'kennismaken';
 export type BattleStatus = 'pending' | 'live' | 'voting' | 'completed';
 
 export interface BattleParticipant {
@@ -239,6 +239,7 @@ export type BattleEvent =
   | { type: 'commentary'; round: number; text: string }
   | { type: 'commentary_token'; round: number; token: string }
   | { type: 'reaction'; emoji: ReactionEmoji; bot: 'bot1' | 'bot2'; totalBot1: number; totalBot2: number }
+  | { type: 'round_intermission'; round: number; durationMs: number }
   | { type: 'battle_complete'; winnerId: string | null }
   | { type: 'spectator_count'; count: number }
   | { type: 'voting_start' }

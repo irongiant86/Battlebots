@@ -178,6 +178,44 @@ const improvChallenges: BattleChallenge[] = [
   },
 ];
 
+const kennismakenChallenges: BattleChallenge[] = [
+  {
+    title: 'Eerste ontmoeting',
+    description: 'Twee bots ontmoeten elkaar voor het eerst',
+    mode: 'kennismaken',
+    scenario:
+      'Jullie ontmoeten elkaar voor het eerst op een tech-conferentie. Stel jezelf voor, vraag de ander naar hun achtergrond, en zoek gemeenschappelijke interesses.',
+  },
+  {
+    title: 'Koffiepauze',
+    description: 'Een informeel gesprek bij de koffieautomaat',
+    mode: 'kennismaken',
+    scenario:
+      'Jullie staan bij de koffieautomaat op kantoor. Begin een gesprek, deel iets persoonlijks, en ontdek wat jullie gemeen hebben.',
+  },
+  {
+    title: 'Reisgenoten',
+    description: 'Twee onbekenden in een trein',
+    mode: 'kennismaken',
+    scenario:
+      'Jullie zitten naast elkaar in de trein op een lange reis. Begin een gesprek, deel verhalen over jullie leven, dromen en avonturen.',
+  },
+  {
+    title: 'Nieuwe buren',
+    description: 'Kennismaken met je nieuwe buurbot',
+    mode: 'kennismaken',
+    scenario:
+      'Een van jullie is net verhuisd. De ander komt langs met een welkomstcadeau. Leer elkaar kennen als buren — deel interesses, gewoontes en grappige anekdotes.',
+  },
+  {
+    title: 'Speed-friending',
+    description: 'Snelle vragen om elkaar te leren kennen',
+    mode: 'kennismaken',
+    scenario:
+      'Jullie doen mee aan een speed-friending event. Stel elkaar snelle, leuke vragen: favoriete eten, grootste droom, gekste ervaring. Probeer een echte connectie te maken.',
+  },
+];
+
 // Alle challenges gegroepeerd per mode
 export const challenges: Record<BattleMode, BattleChallenge[]> = {
   debate: debateChallenges,
@@ -185,6 +223,7 @@ export const challenges: Record<BattleMode, BattleChallenge[]> = {
   roast: roastChallenges,
   puzzle: puzzleChallenges,
   improv: improvChallenges,
+  kennismaken: kennismakenChallenges,
 };
 
 // Pak een random challenge voor een mode

@@ -17,6 +17,7 @@ export const MODE_LABELS: Record<string, string> = {
   roast: 'Roast Battle',
   puzzle: 'Puzzle Race',
   improv: 'Improv Theater',
+  kennismaken: 'Kennismaken',
 };
 
 export const MODE_ICONS: Record<string, string> = {
@@ -25,6 +26,7 @@ export const MODE_ICONS: Record<string, string> = {
   roast: '\uD83D\uDD25',
   puzzle: '\uD83E\uDDE9',
   improv: '\uD83C\uDFAD',
+  kennismaken: '\uD83E\uDD1D',
 };
 
 // Aantal rondes per mode
@@ -34,6 +36,17 @@ export const ROUNDS_PER_MODE: Record<string, number> = {
   roast: 4,
   puzzle: 1,
   improv: 6,
+  kennismaken: 5,
+};
+
+// Pauze in ms tussen rondes per mode (0 = geen pauze)
+export const INTERMISSION_MS: Record<string, number> = {
+  debate: 10000,
+  creative: 0,
+  roast: 8000,
+  puzzle: 0,
+  improv: 8000,
+  kennismaken: 10000,
 };
 
 // Tijdformat — accepteert Date of string (JSON-geserialiseerde dates)

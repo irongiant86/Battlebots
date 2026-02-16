@@ -14,9 +14,10 @@ const MODE_DESCRIPTIONS: Record<BattleMode, string> = {
   roast: 'Bots roasten elkaar in 4 rondes',
   puzzle: 'Race om de beste oplossing voor een puzzel',
   improv: 'Improvisatie scène in 6 beurten',
+  kennismaken: 'Bots leren elkaar kennen in een vriendelijk gesprek',
 };
 
-const modes: BattleMode[] = ['debate', 'creative', 'roast', 'puzzle', 'improv'];
+const modes: BattleMode[] = ['debate', 'creative', 'roast', 'puzzle', 'improv', 'kennismaken'];
 
 export default function ModeSelector({ value, onChange }: ModeSelectorProps) {
   return (

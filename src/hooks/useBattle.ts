@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Battle, BattleEvent, ReactionEmoji } from '@/lib/types';
 import { useSSE } from './useSSE';
 
@@ -23,6 +23,14 @@ export function useBattle(battleId: string | null) {
 
   // Crowd Reactions
   const [reactionCounts, setReactionCounts] = useState({ bot1: 0, bot2: 0 });
+
+  // Intermission countdown
+  const [intermission, setIntermission] = useState<{ active: boolean; secondsLeft: number; round: number }>({
+    active: false,
+    secondsLeft: 0,
+    round: 0,
+  });
+  const intermissionTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Haal initiële battle data op
   useEffect(() => {
@@ -48,6 +56,12 @@ export function useBattle(battleId: string | null) {
 
     switch (event.type) {
       case 'round_start':
+        // Stop intermission als een nieuwe ronde start
+        if (intermissionTimer.current) {
+          clearInterval(intermissionTimer.current);
+          intermissionTimer.current = null;
+        }
+        setIntermission({ active: false, secondsLeft: 0, round: 0 });
         setCurrentRound(event.round);
         setCurrentBot(event.currentBot);
         setCurrentBotModel(event.botModel);
@@ -79,9 +93,34 @@ export function useBattle(battleId: string | null) {
         setReactionCounts({ bot1: event.totalBot1, bot2: event.totalBot2 });
         break;
 
+      case 'round_intermission': {
+        const totalSec = Math.ceil(event.durationMs / 1000);
+        setIntermission({ active: true, secondsLeft: totalSec, round: event.round });
+
+        // Countdown timer
+        if (intermissionTimer.current) clearInterval(intermissionTimer.current);
+        let remaining = totalSec;
+        intermissionTimer.current = setInterval(() => {
+          remaining -= 1;
+          if (remaining <= 0) {
+            if (intermissionTimer.current) clearInterval(intermissionTimer.current);
+            intermissionTimer.current = null;
+            setIntermission({ active: false, secondsLeft: 0, round: 0 });
+          } else {
+            setIntermission((prev) => ({ ...prev, secondsLeft: remaining }));
+          }
+        }, 1000);
+        break;
+      }
+
       case 'voting_start':
         setStatus('voting');
         setLiveCommentary('');
+        if (intermissionTimer.current) {
+          clearInterval(intermissionTimer.current);
+          intermissionTimer.current = null;
+        }
+        setIntermission({ active: false, secondsLeft: 0, round: 0 });
         break;
 
       case 'battle_complete':
@@ -94,6 +133,13 @@ export function useBattle(battleId: string | null) {
         break;
     }
   }, [events]);
+
+  // Cleanup timer bij unmount
+  useEffect(() => {
+    return () => {
+      if (intermissionTimer.current) clearInterval(intermissionTimer.current);
+    };
+  }, []);
 
   // Verzamelde rondes uit events (inclusief commentaar)
   const completedRounds = useMemo(() => {
@@ -121,7 +167,7 @@ export function useBattle(battleId: string | null) {
   }, [events]);
 
   // Stuur een crowd reaction
-  const sendReaction = async (emoji: ReactionEmoji, bot: 'bot1' | 'bot2') => {
+  const sendReaction = useCallback(async (emoji: ReactionEmoji, bot: 'bot1' | 'bot2') => {
     if (!battleId) return;
     try {
       await fetch(`/api/battles/${battleId}/react`, {
@@ -132,7 +178,7 @@ export function useBattle(battleId: string | null) {
     } catch {
       // Silently fail — reacties zijn niet kritiek
     }
-  };
+  }, [battleId]);
 
   return {
     battle,
@@ -149,6 +195,7 @@ export function useBattle(battleId: string | null) {
     liveCommentary,
     reactionCounts,
     sendReaction,
+    intermission,
     events,
   };
 }
