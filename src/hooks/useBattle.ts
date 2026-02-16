@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Battle, BattleEvent } from '@/lib/types';
+import { Battle, BattleEvent, ReactionEmoji } from '@/lib/types';
 import { useSSE } from './useSSE';
 
 export function useBattle(battleId: string | null) {
@@ -18,6 +18,12 @@ export function useBattle(battleId: string | null) {
   const [winnerId, setWinnerId] = useState<string | null>(null);
   const [spectatorCount, setSpectatorCount] = useState(0);
 
+  // AI Commentator
+  const [liveCommentary, setLiveCommentary] = useState('');
+
+  // Crowd Reactions
+  const [reactionCounts, setReactionCounts] = useState({ bot1: 0, bot2: 0 });
+
   // Haal initiële battle data op
   useEffect(() => {
     if (!battleId) return;
@@ -27,6 +33,9 @@ export function useBattle(battleId: string | null) {
       .then((data) => {
         setBattle(data.battle);
         setStatus(data.battle?.status || 'pending');
+        if (data.battle?.reactions) {
+          setReactionCounts(data.battle.reactions);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -43,6 +52,7 @@ export function useBattle(battleId: string | null) {
         setCurrentBot(event.currentBot);
         setCurrentBotModel(event.botModel);
         setStatus('live');
+        setLiveCommentary('');
         break;
 
       case 'token':
@@ -57,8 +67,21 @@ export function useBattle(battleId: string | null) {
         setLiveText({ bot1: '', bot2: '' });
         break;
 
+      case 'commentary_token':
+        setLiveCommentary((prev) => prev + event.token);
+        break;
+
+      case 'commentary':
+        setLiveCommentary(event.text);
+        break;
+
+      case 'reaction':
+        setReactionCounts({ bot1: event.totalBot1, bot2: event.totalBot2 });
+        break;
+
       case 'voting_start':
         setStatus('voting');
+        setLiveCommentary('');
         break;
 
       case 'battle_complete':
@@ -72,16 +95,44 @@ export function useBattle(battleId: string | null) {
     }
   }, [events]);
 
-  // Verzamelde rondes uit events
+  // Verzamelde rondes uit events (inclusief commentaar)
   const completedRounds = useMemo(() => {
-    return events
+    const rounds = events
       .filter((e): e is Extract<BattleEvent, { type: 'round_complete' }> => e.type === 'round_complete')
       .map((e) => ({
         round: e.round,
         bot1Response: e.bot1Response,
         bot2Response: e.bot2Response,
+        commentary: null as string | null,
       }));
+
+    // Koppel commentaar aan de bijbehorende ronde
+    const commentaries = events
+      .filter((e): e is Extract<BattleEvent, { type: 'commentary' }> => e.type === 'commentary');
+
+    for (const c of commentaries) {
+      const round = rounds.find((r) => r.round === c.round);
+      if (round) {
+        round.commentary = c.text;
+      }
+    }
+
+    return rounds;
   }, [events]);
+
+  // Stuur een crowd reaction
+  const sendReaction = async (emoji: ReactionEmoji, bot: 'bot1' | 'bot2') => {
+    if (!battleId) return;
+    try {
+      await fetch(`/api/battles/${battleId}/react`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emoji, bot }),
+      });
+    } catch {
+      // Silently fail — reacties zijn niet kritiek
+    }
+  };
 
   return {
     battle,
@@ -95,6 +146,9 @@ export function useBattle(battleId: string | null) {
     winnerId,
     spectatorCount,
     completedRounds,
+    liveCommentary,
+    reactionCounts,
+    sendReaction,
     events,
   };
 }

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Valideer gekozen model
-    const model = body.model || 'claude-sonnet-4-20250514';
+    const model = body.model || 'claude-sonnet-4-5-20250929';
     if (!AI_MODELS[model as AIModel]) {
       return NextResponse.json({ error: 'Ongeldig AI model' }, { status: 400 });
     }

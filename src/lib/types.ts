@@ -8,8 +8,8 @@
 export type AIProvider = 'anthropic' | 'openai';
 
 // Beschikbare modellen per provider
-export type AnthropicModel = 'claude-sonnet-4-20250514' | 'claude-haiku-35-20241022';
-export type OpenAIModel = 'gpt-4o' | 'gpt-4o-mini';
+export type AnthropicModel = 'claude-sonnet-4-5-20250929' | 'claude-haiku-4-5-20251001';
+export type OpenAIModel = 'gpt-5.2-2025-12-11' | 'gpt-5-mini-2025-08-07';
 
 export type AIModel = AnthropicModel | OpenAIModel;
 
@@ -29,10 +29,10 @@ export interface AIModelConfig {
 
 // Registry van alle beschikbare modellen
 export const AI_MODELS: Record<AIModel, AIModelConfig> = {
-  'claude-sonnet-4-20250514': {
-    id: 'claude-sonnet-4-20250514',
+  'claude-sonnet-4-5-20250929': {
+    id: 'claude-sonnet-4-5-20250929',
     provider: 'anthropic',
-    displayName: 'Claude Sonnet',
+    displayName: 'Claude Sonnet 4.5',
     shortName: 'Sonnet',
     description: 'Krachtig en snel — de beste balans tussen kwaliteit en snelheid',
     maxTokens: 512,
@@ -41,10 +41,10 @@ export const AI_MODELS: Record<AIModel, AIModelConfig> = {
     color: '#d97706',
     icon: '⚡',
   },
-  'claude-haiku-35-20241022': {
-    id: 'claude-haiku-35-20241022',
+  'claude-haiku-4-5-20251001': {
+    id: 'claude-haiku-4-5-20251001',
     provider: 'anthropic',
-    displayName: 'Claude Haiku',
+    displayName: 'Claude Haiku 4.5',
     shortName: 'Haiku',
     description: 'Supersnel en goedkoop — ideaal voor snelle battles',
     maxTokens: 512,
@@ -53,11 +53,11 @@ export const AI_MODELS: Record<AIModel, AIModelConfig> = {
     color: '#10b981',
     icon: '🌸',
   },
-  'gpt-4o': {
-    id: 'gpt-4o',
+  'gpt-5.2-2025-12-11': {
+    id: 'gpt-5.2-2025-12-11',
     provider: 'openai',
-    displayName: 'GPT-4o',
-    shortName: 'GPT-4o',
+    displayName: 'GPT-5.2',
+    shortName: 'GPT-5.2',
     description: 'OpenAI\'s sterkste model — concurreer met het beste',
     maxTokens: 512,
     costPerBattle: 0.10,
@@ -65,10 +65,10 @@ export const AI_MODELS: Record<AIModel, AIModelConfig> = {
     color: '#6366f1',
     icon: '🧠',
   },
-  'gpt-4o-mini': {
-    id: 'gpt-4o-mini',
+  'gpt-5-mini-2025-08-07': {
+    id: 'gpt-5-mini-2025-08-07',
     provider: 'openai',
-    displayName: 'GPT-4o Mini',
+    displayName: 'GPT-5 Mini',
     shortName: 'GPT-Mini',
     description: 'Snel en betaalbaar alternatief van OpenAI',
     maxTokens: 512,
@@ -90,7 +90,7 @@ export function getAllModels(): AIModelConfig[] {
 }
 
 // Default model
-export const DEFAULT_MODEL: AIModel = 'claude-sonnet-4-20250514';
+export const DEFAULT_MODEL: AIModel = 'claude-sonnet-4-5-20250929';
 
 // ============================================================
 // USERS
@@ -177,6 +177,9 @@ export interface Battle {
   winnerId: string | null;
   eloChange: number;
 
+  // Crowd reactions
+  reactions: { bot1: number; bot2: number };
+
   spectatorCount: number;
   startedAt: Date;
   completedAt: Date | null;
@@ -200,6 +203,7 @@ export interface BattleRound {
   bot1RespondedAt: Date | null;
   bot2RespondedAt: Date | null;
   prompt: string;
+  commentary: string | null;
 }
 
 export interface BattleChallenge {
@@ -217,11 +221,24 @@ export interface BattleVote {
   votedAt: Date;
 }
 
+// Crowd reaction types
+export type ReactionEmoji = 'fire' | 'skull' | 'laugh' | 'crown';
+
+export const REACTION_EMOJIS: Record<ReactionEmoji, string> = {
+  fire: '🔥',
+  skull: '💀',
+  laugh: '😂',
+  crown: '👑',
+};
+
 // Battle events voor SSE streaming
 export type BattleEvent =
   | { type: 'round_start'; round: number; currentBot: string; botModel: string }
   | { type: 'token'; round: number; bot: 'bot1' | 'bot2'; token: string }
   | { type: 'round_complete'; round: number; bot1Response: string; bot2Response: string }
+  | { type: 'commentary'; round: number; text: string }
+  | { type: 'commentary_token'; round: number; token: string }
+  | { type: 'reaction'; emoji: ReactionEmoji; bot: 'bot1' | 'bot2'; totalBot1: number; totalBot2: number }
   | { type: 'battle_complete'; winnerId: string | null }
   | { type: 'spectator_count'; count: number }
   | { type: 'voting_start' }

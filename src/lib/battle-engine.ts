@@ -1,7 +1,7 @@
 // src/lib/battle-engine.ts — Battle logica per mode met multi-model AI
 // Elke bot kan een ander AI model gebruiken (Claude Sonnet, Haiku, GPT-4o, etc.)
 
-import { Battle, BattleEvent, BattleRound, Bot, BattleMode, AI_MODELS } from './types';
+import { Battle, BattleEvent, BattleRound, Bot, BattleMode, AIModel, AI_MODELS, ReactionEmoji } from './types';
 import { streamBotResponse } from './ai';
 import { store } from './store';
 import { calculateEloChange } from './elo';
@@ -40,6 +40,11 @@ class BattleEngine {
         }
       }
     }
+  }
+
+  // Publieke emit voor crowd reactions (aangeroepen vanuit API route)
+  emitReaction(battleId: string, emoji: ReactionEmoji, bot: 'bot1' | 'bot2', totalBot1: number, totalBot2: number) {
+    this.emit(battleId, { type: 'reaction', emoji, bot, totalBot1, totalBot2 });
   }
 
   // Start en voer een complete battle uit
@@ -132,6 +137,7 @@ class BattleEngine {
           }
         }
 
+        roundData.commentary = null;
         battle.rounds.push(roundData);
         store.updateBattle(battle.id, { rounds: battle.rounds });
 
@@ -141,6 +147,24 @@ class BattleEngine {
           bot1Response: roundData.bot1Response || '',
           bot2Response: roundData.bot2Response || '',
         });
+
+        // AI Commentator — genereer live commentaar na elke ronde
+        if (round < totalRounds) {
+          try {
+            const commentary = await this.generateCommentary(
+              battle,
+              round,
+              roundData.bot1Response || '',
+              roundData.bot2Response || '',
+              bot1.name,
+              bot2.name
+            );
+            roundData.commentary = commentary;
+            store.updateBattle(battle.id, { rounds: battle.rounds });
+          } catch (err) {
+            console.error('[BattleEngine] Commentaar fout:', err);
+          }
+        }
       }
 
       // Battle klaar — ga naar voting
@@ -338,6 +362,65 @@ class BattleEngine {
         user: `IMPROV SCÈNE:\n${scenario}\n\n[Ronde ${round} van ${totalRounds}]\n\nJe medespeler zei:\n"${prevResponse}"\n\nReageer in character. Houd de scène gaande. Schrijf ALLEEN je beurt voor deze ronde, niets meer. Max 150 woorden.`,
       };
     }
+  }
+
+  // ============================================================
+  // AI COMMENTATOR — Sportverslaggever-stijl commentaar na elke ronde
+  // ============================================================
+
+  private async generateCommentary(
+    battle: Battle,
+    round: number,
+    bot1Response: string,
+    bot2Response: string,
+    bot1Name: string,
+    bot2Name: string
+  ): Promise<string> {
+    const commentatorModel = this.getCommentatorModel();
+    const modeLabel = battle.mode === 'roast' ? 'roast battle' :
+      battle.mode === 'debate' ? 'debat' :
+      battle.mode === 'improv' ? 'improv show' :
+      battle.mode === 'creative' ? 'creatieve wedstrijd' : 'battle';
+
+    const system = `Je bent een energieke, grappige sportcommentator voor een AI ${modeLabel}. Je geeft kort, puntig commentaar na elke ronde. Je bent enthousiast, gebruikt krachtige taal, en benoemt specifiek wat er goed of slecht ging. Denk aan een mix tussen een voetbalcommentator en een comedy roast host. Schrijf in het Nederlands. Max 2 zinnen.`;
+
+    const user = `RONDE ${round} RESULTATEN:\n\n${bot1Name} zei:\n"${bot1Response.slice(0, 300)}"\n\n${bot2Name} zei:\n"${bot2Response.slice(0, 300)}"\n\nGeef je live commentaar op deze ronde. Wie deed het beter en waarom? Wees kort en puntig — max 2 zinnen.`;
+
+    let fullCommentary = '';
+
+    try {
+      for await (const token of streamBotResponse(commentatorModel, system, user)) {
+        fullCommentary += token;
+        this.emit(battle.id, {
+          type: 'commentary_token',
+          round,
+          token,
+        });
+      }
+
+      this.emit(battle.id, {
+        type: 'commentary',
+        round,
+        text: fullCommentary,
+      });
+    } catch (error) {
+      console.error('[BattleEngine] Commentator fout:', error);
+      fullCommentary = '';
+    }
+
+    return fullCommentary;
+  }
+
+  // Kies het snelste/goedkoopste beschikbare model voor commentaar
+  private getCommentatorModel(): AIModel {
+    // Voorkeur: Haiku (snel + goedkoop), fallback naar wat beschikbaar is
+    const preferred: AIModel[] = ['claude-haiku-4-5-20251001', 'gpt-5-mini-2025-08-07', 'claude-sonnet-4-5-20250929', 'gpt-5.2-2025-12-11'];
+    for (const model of preferred) {
+      const provider = AI_MODELS[model].provider;
+      if (provider === 'anthropic' && process.env.ANTHROPIC_API_KEY) return model;
+      if (provider === 'openai' && process.env.OPENAI_API_KEY) return model;
+    }
+    return preferred[0]; // fallback
   }
 
   // Haal de laatste response van een bepaalde kant op
