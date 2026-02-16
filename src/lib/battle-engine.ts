@@ -81,6 +81,7 @@ class BattleEngine {
           bot1RespondedAt: null,
           bot2RespondedAt: null,
           prompt: '',
+          commentary: null,
         };
 
         // Bepaal welke bot eerst gaat per mode
@@ -137,7 +138,6 @@ class BattleEngine {
           }
         }
 
-        roundData.commentary = null;
         battle.rounds.push(roundData);
         store.updateBattle(battle.id, { rounds: battle.rounds });
 
