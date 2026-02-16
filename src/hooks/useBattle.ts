@@ -32,6 +32,9 @@ export function useBattle(battleId: string | null) {
   });
   const intermissionTimer = useRef<NodeJS.Timeout | null>(null);
 
+  // Track hoeveel events we al verwerkt hebben — voorkomt dat gebatchte events verloren gaan
+  const lastProcessedIndex = useRef(0);
+
   // Haal initiële battle data op
   useEffect(() => {
     if (!battleId) return;
@@ -49,89 +52,104 @@ export function useBattle(battleId: string | null) {
       .catch(() => setLoading(false));
   }, [battleId]);
 
-  // Verwerk SSE events
+  // Verwerk SSE events — verwerk ALLE nieuwe events, niet alleen de laatste
+  // useSSE batcht meerdere events per requestAnimationFrame; we moeten ze allemaal verwerken
   useEffect(() => {
-    if (events.length === 0) return;
-    const event = events[events.length - 1];
-
-    switch (event.type) {
-      case 'round_start':
-        // Stop intermission als een nieuwe ronde start
-        if (intermissionTimer.current) {
-          clearInterval(intermissionTimer.current);
-          intermissionTimer.current = null;
-        }
-        setIntermission({ active: false, secondsLeft: 0, round: 0 });
-        setCurrentRound(event.round);
-        setCurrentBot(event.currentBot);
-        setCurrentBotModel(event.botModel);
-        setStatus('live');
-        setLiveCommentary('');
-        break;
-
-      case 'token':
-        setLiveText((prev) => ({
-          ...prev,
-          [event.bot]: prev[event.bot] + event.token,
-        }));
-        break;
-
-      case 'round_complete':
-        // Reset live text voor volgende ronde
-        setLiveText({ bot1: '', bot2: '' });
-        break;
-
-      case 'commentary_token':
-        setLiveCommentary((prev) => prev + event.token);
-        break;
-
-      case 'commentary':
-        setLiveCommentary(event.text);
-        break;
-
-      case 'reaction':
-        setReactionCounts({ bot1: event.totalBot1, bot2: event.totalBot2 });
-        break;
-
-      case 'round_intermission': {
-        const totalSec = Math.ceil(event.durationMs / 1000);
-        setIntermission({ active: true, secondsLeft: totalSec, round: event.round });
-
-        // Countdown timer
-        if (intermissionTimer.current) clearInterval(intermissionTimer.current);
-        let remaining = totalSec;
-        intermissionTimer.current = setInterval(() => {
-          remaining -= 1;
-          if (remaining <= 0) {
-            if (intermissionTimer.current) clearInterval(intermissionTimer.current);
-            intermissionTimer.current = null;
-            setIntermission({ active: false, secondsLeft: 0, round: 0 });
-          } else {
-            setIntermission((prev) => ({ ...prev, secondsLeft: remaining }));
-          }
-        }, 1000);
-        break;
-      }
-
-      case 'voting_start':
-        setStatus('voting');
-        setLiveCommentary('');
-        if (intermissionTimer.current) {
-          clearInterval(intermissionTimer.current);
-          intermissionTimer.current = null;
-        }
-        setIntermission({ active: false, secondsLeft: 0, round: 0 });
-        break;
-
-      case 'battle_complete':
-        setStatus('completed');
-        setWinnerId(event.winnerId);
-        break;
-
-      case 'spectator_count':
-        setSpectatorCount(event.count);
-        break;
+    if (events.length === 0) {
+      lastProcessedIndex.current = 0;
+      return;
     }
+
+    // Detecteer reset (nieuw battleId → events array opnieuw opgebouwd)
+    if (events.length < lastProcessedIndex.current) {
+      lastProcessedIndex.current = 0;
+    }
+
+    // Verwerk alle events die we nog niet gezien hebben
+    for (let i = lastProcessedIndex.current; i < events.length; i++) {
+      const event = events[i];
+
+      switch (event.type) {
+        case 'round_start':
+          // Stop intermission als een nieuwe ronde start
+          if (intermissionTimer.current) {
+            clearInterval(intermissionTimer.current);
+            intermissionTimer.current = null;
+          }
+          setIntermission({ active: false, secondsLeft: 0, round: 0 });
+          setCurrentRound(event.round);
+          setCurrentBot(event.currentBot);
+          setCurrentBotModel(event.botModel);
+          setStatus('live');
+          setLiveCommentary('');
+          break;
+
+        case 'token':
+          setLiveText((prev) => ({
+            ...prev,
+            [event.bot]: prev[event.bot] + event.token,
+          }));
+          break;
+
+        case 'round_complete':
+          // Reset live text voor volgende ronde
+          setLiveText({ bot1: '', bot2: '' });
+          break;
+
+        case 'commentary_token':
+          setLiveCommentary((prev) => prev + event.token);
+          break;
+
+        case 'commentary':
+          setLiveCommentary(event.text);
+          break;
+
+        case 'reaction':
+          setReactionCounts({ bot1: event.totalBot1, bot2: event.totalBot2 });
+          break;
+
+        case 'round_intermission': {
+          const totalSec = Math.ceil(event.durationMs / 1000);
+          setIntermission({ active: true, secondsLeft: totalSec, round: event.round });
+
+          // Countdown timer
+          if (intermissionTimer.current) clearInterval(intermissionTimer.current);
+          let remaining = totalSec;
+          intermissionTimer.current = setInterval(() => {
+            remaining -= 1;
+            if (remaining <= 0) {
+              if (intermissionTimer.current) clearInterval(intermissionTimer.current);
+              intermissionTimer.current = null;
+              setIntermission({ active: false, secondsLeft: 0, round: 0 });
+            } else {
+              setIntermission((prev) => ({ ...prev, secondsLeft: remaining }));
+            }
+          }, 1000);
+          break;
+        }
+
+        case 'voting_start':
+          setStatus('voting');
+          setLiveCommentary('');
+          if (intermissionTimer.current) {
+            clearInterval(intermissionTimer.current);
+            intermissionTimer.current = null;
+          }
+          setIntermission({ active: false, secondsLeft: 0, round: 0 });
+          break;
+
+        case 'battle_complete':
+          setStatus('completed');
+          setWinnerId(event.winnerId);
+          break;
+
+        case 'spectator_count':
+          setSpectatorCount(event.count);
+          break;
+      }
+    }
+
+    lastProcessedIndex.current = events.length;
   }, [events]);
 
   // Cleanup timer bij unmount

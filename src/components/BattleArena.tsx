@@ -151,7 +151,7 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
                 </p>
               </div>
             ))}
-            {liveText.bot1 && (
+            {liveText.bot1 && currentRound > 0 && (
               <div>
                 <div className={`text-[10px] uppercase tracking-wider mb-1 ${
                   isKennismaken ? 'text-emerald-500/50' : 'text-blue-500/50'
@@ -202,7 +202,7 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
                 </p>
               </div>
             ))}
-            {liveText.bot2 && (
+            {liveText.bot2 && currentRound > 0 && (
               <div>
                 <div className={`text-[10px] uppercase tracking-wider mb-1 ${
                   isKennismaken ? 'text-violet-500/50' : 'text-red-500/50'
