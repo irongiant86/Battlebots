@@ -253,6 +253,18 @@ class BattleEngine {
       fullResponse = `[${modelConfig.displayName} kon geen response genereren]`;
     }
 
+    // Fallback bij lege response (bv. content filter of API probleem)
+    if (!fullResponse.trim()) {
+      console.warn(`[BattleEngine] LEEG ANTWOORD van ${bot.name} (${bot.model}) in ronde ${round}`);
+      fullResponse = `[${bot.name} gaf geen antwoord in deze ronde]`;
+      this.emit(battle.id, {
+        type: 'token',
+        round,
+        bot: botSide,
+        token: fullResponse,
+      });
+    }
+
     return fullResponse;
   }
 
