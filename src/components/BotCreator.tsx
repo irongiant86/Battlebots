@@ -51,7 +51,7 @@ export default function BotCreator() {
 
   // Stap 3: Instructions + Model
   const [systemPrompt, setSystemPrompt] = useState('');
-  const [model, setModel] = useState<AIModel>('claude-sonnet-4-20250514');
+  const [model, setModel] = useState<AIModel>('claude-sonnet-4-5-20250929');
 
   // Stap 4: Avatar
   const [avatar, setAvatar] = useState<BotAvatarType>(randomAvatar());

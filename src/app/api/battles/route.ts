@@ -73,6 +73,7 @@ export async function POST(req: NextRequest) {
       votes: [],
       winnerId: null,
       eloChange: 0,
+      reactions: { bot1: 0, bot2: 0 },
       spectatorCount: 0,
       startedAt: new Date(),
       completedAt: null,

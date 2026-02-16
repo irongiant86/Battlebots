@@ -52,6 +52,14 @@ export async function GET(
               bot1Response: round.bot1Response,
               bot2Response: round.bot2Response,
             });
+            // Stuur ook bestaande commentaren
+            if (round.commentary) {
+              send({
+                type: 'commentary',
+                round: round.roundNumber,
+                text: round.commentary,
+              });
+            }
           }
         }
       }

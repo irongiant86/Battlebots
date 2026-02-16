@@ -8,6 +8,7 @@ import LiveIndicator from './LiveIndicator';
 import RoundCounter from './RoundCounter';
 import TypewriterText from './TypewriterText';
 import VoteBar from './VoteBar';
+import CrowdReactions from './CrowdReactions';
 import { MODE_LABELS, MODE_ICONS } from '@/lib/utils';
 
 interface BattleArenaProps {
@@ -27,6 +28,9 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
     winnerId,
     spectatorCount,
     completedRounds,
+    liveCommentary,
+    reactionCounts,
+    sendReaction,
   } = useBattle(battleId);
 
   const [voted, setVoted] = useState<'bot1' | 'bot2' | null>(null);
@@ -193,6 +197,51 @@ export default function BattleArena({ battleId }: BattleArenaProps) {
           </div>
         </div>
       </div>
+
+      {/* AI Commentator */}
+      {liveCommentary && status === 'live' && (
+        <div className="mb-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-sm">🎙️</span>
+            <span className="text-[10px] text-amber-500/70 uppercase tracking-wider font-bold">
+              Commentator
+            </span>
+          </div>
+          <p className="text-sm text-amber-200/90 italic leading-relaxed">
+            {liveCommentary}
+          </p>
+        </div>
+      )}
+
+      {/* Completed round commentaries */}
+      {completedRounds.some((r) => r.commentary) && status !== 'live' && (
+        <div className="mb-6 space-y-2">
+          {completedRounds.filter((r) => r.commentary).map((round) => (
+            <div key={`commentary-${round.round}`} className="rounded-xl border border-amber-500/10 bg-amber-500/5 p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs">🎙️</span>
+                <span className="text-[10px] text-amber-500/50 uppercase tracking-wider">
+                  Commentaar ronde {round.round}
+                </span>
+              </div>
+              <p className="text-xs text-amber-200/70 italic">
+                {round.commentary}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Crowd Reactions */}
+      {status === 'live' && (
+        <CrowdReactions
+          bot1Name={battle.bot1.botName}
+          bot2Name={battle.bot2.botName}
+          bot1Count={reactionCounts.bot1}
+          bot2Count={reactionCounts.bot2}
+          onReact={sendReaction}
+        />
+      )}
 
       {/* Voting */}
       {status === 'voting' && !voted && (
