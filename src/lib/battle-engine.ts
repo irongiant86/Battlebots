@@ -239,24 +239,25 @@ class BattleEngine {
     opponentSide: 'bot1' | 'bot2',
     opponentName: string
   ): { system: string; user: string } {
-    const system = `Je bent "${bot.name}". ${bot.personality.systemPrompt}\n\nJe doet mee aan een debat. Wees overtuigend en gebruik je unieke stijl.`;
+    const totalRounds = ROUNDS_PER_MODE['debate'] || 3;
+    const system = `Je bent "${bot.name}". ${bot.personality.systemPrompt}\n\nJe doet mee aan een debat. Wees overtuigend en gebruik je unieke stijl.\n\nBELANGRIJK: Je genereert nu ALLEEN jouw reactie voor deze ene ronde. Schrijf GEEN ronde-nummers, headers of labels. Ga NIET door naar andere rondes. Genereer ÉÉN enkele response en stop daarna.`;
 
     const prevResponse = this.getLastResponse(history, opponentSide);
 
     if (round === 1) {
       return {
         system,
-        user: `DEBAT TOPIC: "${topic}"\n\nDit is je opening statement. Verdedig de stelling met krachtige argumenten. Max 300 woorden.`,
+        user: `DEBAT TOPIC: "${topic}"\n\n[Ronde ${round} van ${totalRounds}]\n\nDit is je opening statement. Verdedig de stelling met krachtige argumenten. Schrijf ALLEEN je statement voor deze ronde, niets meer. Max 300 woorden.`,
       };
     } else if (round === 2) {
       return {
         system,
-        user: `DEBAT TOPIC: "${topic}"\n\nJe tegenstander ${opponentName} zei:\n"${prevResponse}"\n\nWeerleg hun argumenten en versterk je eigen positie. Max 200 woorden.`,
+        user: `DEBAT TOPIC: "${topic}"\n\n[Ronde ${round} van ${totalRounds}]\n\nJe tegenstander ${opponentName} zei:\n"${prevResponse}"\n\nWeerleg hun argumenten en versterk je eigen positie. Schrijf ALLEEN je reactie voor deze ronde, niets meer. Max 200 woorden.`,
       };
     } else {
       return {
         system,
-        user: `DEBAT TOPIC: "${topic}"\n\nJe tegenstander ${opponentName} zei:\n"${prevResponse}"\n\nDit is je slotpleidooi. Vat samen waarom jij gelijk hebt. Maak het memorabel. Max 150 woorden.`,
+        user: `DEBAT TOPIC: "${topic}"\n\n[Ronde ${round} van ${totalRounds}]\n\nJe tegenstander ${opponentName} zei:\n"${prevResponse}"\n\nDit is je slotpleidooi. Vat samen waarom jij gelijk hebt. Maak het memorabel. Schrijf ALLEEN je slotpleidooi voor deze ronde, niets meer. Max 150 woorden.`,
       };
     }
   }
@@ -269,19 +270,20 @@ class BattleEngine {
     botSide: 'bot1' | 'bot2',
     opponentSide: 'bot1' | 'bot2'
   ): { system: string; user: string } {
-    const system = `Je bent "${bot.name}". ${bot.personality.systemPrompt}\n\nJe staat in een roast battle. Wees grappig en scherp, maar NOOIT haatdragend, racistisch, seksistisch of discriminerend. Humor is je wapen, niet haat.`;
+    const totalRounds = ROUNDS_PER_MODE['roast'] || 4;
+    const system = `Je bent "${bot.name}". ${bot.personality.systemPrompt}\n\nJe staat in een roast battle. Wees grappig en scherp, maar NOOIT haatdragend, racistisch, seksistisch of discriminerend. Humor is je wapen, niet haat.\n\nBELANGRIJK: Je genereert nu ALLEEN jouw reactie voor deze ene ronde. Schrijf GEEN ronde-nummers, headers of labels (zoals "Ronde 1", "Ronde 2"). Ga NIET door naar andere rondes. Genereer ÉÉN enkele response en stop daarna.`;
 
     const prevResponse = this.getLastResponse(history, opponentSide);
 
     if (round === 1) {
       return {
         system,
-        user: `ROAST BATTLE tegen ${opponentName}!\n\nOpen met je beste roast. Wees grappig, scherp en origineel. Max 150 woorden.`,
+        user: `ROAST BATTLE tegen ${opponentName}!\n\n[Ronde ${round} van ${totalRounds}]\n\nOpen met je beste roast. Wees grappig, scherp en origineel. Schrijf ALLEEN je roast voor deze ronde, niets meer. Max 150 woorden.`,
       };
     } else {
       return {
         system,
-        user: `ROAST BATTLE tegen ${opponentName}!\n\n${opponentName} zei:\n"${prevResponse}"\n\nKom terug met iets beters! Gebruik callbacks naar wat ze zeiden. Max 150 woorden.`,
+        user: `ROAST BATTLE tegen ${opponentName}!\n\n[Ronde ${round} van ${totalRounds}]\n\n${opponentName} zei:\n"${prevResponse}"\n\nKom terug met iets beters! Gebruik callbacks naar wat ze zeiden. Schrijf ALLEEN je roast voor deze ronde, niets meer. Max 150 woorden.`,
       };
     }
   }
@@ -314,7 +316,8 @@ class BattleEngine {
     botSide: 'bot1' | 'bot2',
     opponentSide: 'bot1' | 'bot2'
   ): { system: string; user: string } {
-    const system = `Je bent "${bot.name}". ${bot.personality.systemPrompt}\n\nJe doet mee aan improv theater. Blijf in character, reageer op je medespeler, en houd de scène levendig en grappig.`;
+    const totalRounds = ROUNDS_PER_MODE['improv'] || 6;
+    const system = `Je bent "${bot.name}". ${bot.personality.systemPrompt}\n\nJe doet mee aan improv theater. Blijf in character, reageer op je medespeler, en houd de scène levendig en grappig.\n\nBELANGRIJK: Je genereert nu ALLEEN jouw reactie voor deze ene ronde. Schrijf GEEN ronde-nummers, headers of labels. Ga NIET door naar andere rondes. Genereer ÉÉN enkele response en stop daarna.`;
 
     const prevResponse = this.getLastResponse(history, opponentSide);
     const plotTwistRound = 3; // Halverwege
@@ -322,17 +325,17 @@ class BattleEngine {
     if (round === 1) {
       return {
         system,
-        user: `IMPROV SCÈNE:\n${scenario}\n\nBegin de scène. Stel je character voor en start de actie. Max 150 woorden.`,
+        user: `IMPROV SCÈNE:\n${scenario}\n\n[Ronde ${round} van ${totalRounds}]\n\nBegin de scène. Stel je character voor en start de actie. Schrijf ALLEEN je beurt voor deze ronde, niets meer. Max 150 woorden.`,
       };
     } else if (round === plotTwistRound) {
       return {
         system,
-        user: `IMPROV SCÈNE (PLOT TWIST!):\n${scenario}\n\nJe medespeler zei:\n"${prevResponse}"\n\nLet op: er is een PLOT TWIST! Verwerk deze in je reactie. Max 150 woorden.`,
+        user: `IMPROV SCÈNE (PLOT TWIST!):\n${scenario}\n\n[Ronde ${round} van ${totalRounds}]\n\nJe medespeler zei:\n"${prevResponse}"\n\nLet op: er is een PLOT TWIST! Verwerk deze in je reactie. Schrijf ALLEEN je beurt voor deze ronde, niets meer. Max 150 woorden.`,
       };
     } else {
       return {
         system,
-        user: `IMPROV SCÈNE:\n${scenario}\n\nJe medespeler zei:\n"${prevResponse}"\n\nReageer in character. Houd de scène gaande. Max 150 woorden.`,
+        user: `IMPROV SCÈNE:\n${scenario}\n\n[Ronde ${round} van ${totalRounds}]\n\nJe medespeler zei:\n"${prevResponse}"\n\nReageer in character. Houd de scène gaande. Schrijf ALLEEN je beurt voor deze ronde, niets meer. Max 150 woorden.`,
       };
     }
   }
