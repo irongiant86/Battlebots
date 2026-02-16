@@ -36,9 +36,10 @@ export const ROUNDS_PER_MODE: Record<string, number> = {
   improv: 6,
 };
 
-// Tijdformat
-export function timeAgo(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+// Tijdformat — accepteert Date of string (JSON-geserialiseerde dates)
+export function timeAgo(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const seconds = Math.floor((Date.now() - d.getTime()) / 1000);
   if (seconds < 60) return 'zojuist';
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m geleden`;
   if (seconds < 86400) return `${Math.floor(seconds / 3600)}u geleden`;
